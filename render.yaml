@@ -1,8 +1,8 @@
 databases:
-  - name: "django.db.backends.postgresql"
+  - name: simR-database
     plan: free
-    databaseName: "dj_test"
-    user: "postgres"
+    databaseName: simr_database
+    user: simr_database_user
 
 services:
   - type: web
@@ -13,9 +13,7 @@ services:
     startCommand: "python -m gunicorn simR.asgi:application -k uvicorn.workers.UvicornWorker"
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: django.db.backends.postgresql
-          property: connectionString
+        fromDatabase: simR-database
       - key: SECRET_KEY
         generateValue: true
       - key: WEB_CONCURRENCY
