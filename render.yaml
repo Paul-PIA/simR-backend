@@ -1,8 +1,8 @@
 databases:
-  - name: django.db.backends.postgresql
+  - name: "django.db.backends.postgresql"
     plan: free
-    databaseName: dj_test
-    user: postgres
+    databaseName: "dj_test"
+    user: "postgres"
 
 services:
   - type: web
