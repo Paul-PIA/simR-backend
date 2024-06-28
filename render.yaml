@@ -1,9 +1,22 @@
+databases:
+  - name: django.db.backends.postgresql
+    plan: free
+    databaseName: dj_test
+    user: postgres
+
 services:
   - type: web
-    name: django-app
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn simR.wsgi:application --bind 0.0.0.0:$PORT
+    plan: free
+    name: simR
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "python -m gunicorn simR.asgi:application -k uvicorn.workers.UvicornWorker"
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: django.db.backends.postgresql
+          property: connectionString
       - key: SECRET_KEY
-        value: django-insecure-m121fuicgj5gd-4a1g@6jkitxbc%inpycqi8*8n*s#%^s6s$!2
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 4
