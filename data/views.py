@@ -16,13 +16,3 @@ def get_user_emails(request):
     emails = CustomUser.objects.values_list('email', flat=True)
     return JsonResponse(list(emails), safe=False)
 
-
-from .models import CustomUser  # Assurez-vous d'importer le modèle correct
-
-def create_superuser(request):
-    if not CustomUser.objects.filter(username='admin').exists():
-        CustomUser.objects.create_superuser('admin', 'admin@example.com', 'adminpassword')
-        return HttpResponse('Superuser created successfully')
-    return HttpResponse('Superuser already exists')
-
-
