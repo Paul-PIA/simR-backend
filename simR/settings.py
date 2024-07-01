@@ -63,6 +63,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
+    "simR.middleware.SyncToAsyncMiddleware",
     "allauth.account.middleware.AccountMiddleware",#allauth regisration
 
     'corsheaders.middleware.CorsMiddleware',
