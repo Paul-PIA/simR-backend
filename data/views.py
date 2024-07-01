@@ -15,3 +15,13 @@ def profile(request,id):
 def get_user_emails(request):
     emails = CustomUser.objects.values_list('email', flat=True)
     return JsonResponse(list(emails), safe=False)
+
+
+from django.contrib.auth.models import User
+
+def create_superuser(request):
+    if not User.objects.filter(username='admin').exists():
+        User.objects.create_superuser('admin', 'admin@example.com', 'adminpassword')
+        return HttpResponse('Superuser created successfully')
+    return HttpResponse('Superuser already exists')
+
