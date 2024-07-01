@@ -17,11 +17,12 @@ def get_user_emails(request):
     return JsonResponse(list(emails), safe=False)
 
 
-from django.contrib.auth.models import User
+from .models import CustomUser  # Assurez-vous d'importer le modèle correct
 
 def create_superuser(request):
-    if not User.objects.filter(username='admin').exists():
-        User.objects.create_superuser('admin', 'admin@example.com', 'adminpassword')
+    if not CustomUser.objects.filter(username='admin').exists():
+        CustomUser.objects.create_superuser('admin', 'admin@example.com', 'adminpassword')
         return HttpResponse('Superuser created successfully')
     return HttpResponse('Superuser already exists')
+
 
