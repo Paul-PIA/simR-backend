@@ -99,6 +99,7 @@ TEMPLATES = [
     },
 ]
 
+
 SOCIALACCOUNT_PROVIDERS = {
     # For each OAuth based provider, either add a ``SocialApp``
     # (``socialaccount`` app) containing the required client
@@ -231,5 +232,7 @@ ACCOUNT_RATE_LIMITS = {
 
 SITE_ID = 1 
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"  # new
-#or any other page 
+#or any other page  
 ACCOUNT_LOGOUT_REDIRECT_URL ='/accounts/login/' 
+
+ASYNC_SUPPORT = True
