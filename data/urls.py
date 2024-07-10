@@ -2,9 +2,10 @@ from django.urls import path,include
 from django.shortcuts import render
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 from dj_rest_auth.views import PasswordResetView, PasswordResetConfirmView
-
-
 from . import views
+
+
+from . import viewspip 
 from .routers import router
 
 app_name = "data"
