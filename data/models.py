@@ -10,11 +10,7 @@ class CustomUser(AbstractUser): ### as user in code
     post = models.CharField(max_length=15,verbose_name="post code")
     city = models.CharField(max_length=31)
     ### relation
-<<<<<<< HEAD
-    org = models.ForeignKey("Organization",on_delete=models.CASCADE,related_name="user",null=True,verbose_name="organization")
-=======
     org = models.ForeignKey("Organization",on_delete=models.CASCADE,related_name="users",null=True,verbose_name="organization")
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
 
     class Meta:
         ordering = ['-last_login']
@@ -48,11 +44,7 @@ class CustomUser(AbstractUser): ### as user in code
 class Organization(models.Model): ### as org in code
     #id_org = models.IntegerField(primary_key=True)
     email = models.EmailField(unique=True)
-<<<<<<< HEAD
-    name = models.CharField(max_length=63,unique=True)
-=======
     name = models.CharField(max_length=63,unique=True,editable=True)
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
     tel = models.CharField(max_length=31,verbose_name="telephone number")
     adrs = models.CharField(max_length=63,verbose_name="adress")
     post = models.CharField(max_length=15,verbose_name="post code")
@@ -72,19 +64,11 @@ class Organization(models.Model): ### as org in code
 class Contract(models.Model):  ### as con in code
     #id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=63,unique=True)
-<<<<<<< HEAD
-    nb_org = models.IntegerField(verbose_name="maximum of co-organization")
-    nb_access = models.IntegerField(verbose_name="maximum of access")
-    ### relation
-    #org_pr = models.ForeignKey("Organization",on_delete=models.PROTECT,verbose_name="principal organization")
-    org = models.ManyToManyField("Organization",verbose_name="co-organization")
-=======
     nb_org = models.IntegerField(verbose_name="maximum of organization")
     nb_access = models.IntegerField(verbose_name="maximum of access")
     ### relation
     #org_pr = models.ForeignKey("Organization",on_delete=models.PROTECT,verbose_name="principal organization")
     org = models.ManyToManyField("Organization",related_name="cons",verbose_name="organizations")
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
     
     class Meta:
         ordering = ['name']
@@ -96,11 +80,7 @@ class Contract(models.Model):  ### as con in code
             return None
         
     def __str__(self):#to string
-<<<<<<< HEAD
-        return Organization.__str__(self.name)
-=======
         return self.name
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
 
 class Exercise(models.Model):  ### as exer in code
     #id = models.IntegerField(primary_key=True)
@@ -116,13 +96,8 @@ class Exercise(models.Model):  ### as exer in code
     )
     type = models.CharField(max_length=1,choices=EXER_TYPE,default='1')
     ### relation
-<<<<<<< HEAD
-    con = models.OneToOneField("Contract",on_delete=models.CASCADE,verbose_name="contract")
-    org = models.ForeignKey("Organization",on_delete=models.PROTECT,verbose_name="organization in charge")
-=======
     con = models.ForeignKey("Contract",on_delete=models.CASCADE,related_name="exers",verbose_name="contract")
     org = models.ForeignKey("Organization",on_delete=models.PROTECT,related_name="exers",verbose_name="organization in charge")
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
     
     class Meta:
         ordering = ['-date_i','-date_f']
@@ -135,11 +110,6 @@ class Exercise(models.Model):  ### as exer in code
     def __str__(self): #to string
         return self.name
     
-<<<<<<< HEAD
-def file_path(con:Contract, filename):
-    # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
-    return "contract_{0}/{1}".format(con.id, filename)
-=======
 def file_path(instance,filename):
     # file will be uploaded to MEDIA_ROOT
     # con = instance['con']
@@ -149,22 +119,11 @@ def file_path(instance,filename):
         instance.exer.id,
         instance.name,
         instance.con.id)
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
 
 class File(models.Model):
     #id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=63)
     content = models.FileField(upload_to=file_path)
-<<<<<<< HEAD
-    ### status
-    is_commented = models.BooleanField(default=False)
-    is_boycotted = models.BooleanField(default=False)
-    is_final = models.BooleanField(default=False)
-    ### relation
-    uploader = models.ForeignKey("CustomUser",on_delete=models.CASCADE,null=True)#,default=CustomUser.get_admin()
-    con = models.ForeignKey("Contract",on_delete=models.CASCADE,verbose_name="contract")
-    exer = models.ForeignKey("Exercise",on_delete=models.CASCADE,verbose_name="exercise",null=True,blank=True)
-=======
     last_update = models.DateTimeField(auto_now=True,verbose_name="last update")
     ### status
     is_template = models.BooleanField(default=False)
@@ -177,7 +136,6 @@ class File(models.Model):
     uploader = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="files_uploaded",null=True)#,default=CustomUser.get_admin()
     con = models.ForeignKey("Contract",on_delete=models.CASCADE,related_name="files",verbose_name="contract")
     exer = models.ForeignKey("Exercise",on_delete=models.CASCADE,related_name="files",verbose_name="exercise",null=True,blank=True)
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
     
     class Meta:
         ordering = ['name']
@@ -196,15 +154,6 @@ class Comment(models.Model):
     line = models.IntegerField()
     colone = models.IntegerField()
     text = models.TextField(max_length=4095)
-<<<<<<< HEAD
-    ### status
-    is_treated = models.BooleanField(default=False)
-    ### relation
-    commenter = models.ForeignKey("CustomUser",on_delete=models.CASCADE,null=True,related_name="commenter")#default=CustomUser.get_admin(),
-    attribution = models.ForeignKey("CustomUser",on_delete=models.SET_NULL,null=True,blank=True,related_name="attribute_to")
-    parent = models.ForeignKey("self",on_delete=models.CASCADE,related_name='child',null=True,blank=True)
-    file = models.ForeignKey("File",on_delete=models.CASCADE)
-=======
     time = models.DateTimeField(auto_now=True)
     ### status
     is_treated = models.BooleanField(default=False)
@@ -213,7 +162,6 @@ class Comment(models.Model):
     dealer = models.ForeignKey("CustomUser",on_delete=models.SET_NULL,null=True,blank=True,related_name="comments_to_deal")
     parent = models.ForeignKey("self",on_delete=models.CASCADE,null=True,blank=True,related_name='answers')
     file = models.ForeignKey("File",on_delete=models.CASCADE,related_name='comments')
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
     
     class Meta:
         ordering = ['file',]
@@ -231,15 +179,9 @@ class Comment(models.Model):
 class MailBell(models.Model):
     user = models.OneToOneField("CustomUser",on_delete=models.CASCADE,primary_key=True,related_name="mailbell")
     frequence = models.IntegerField(default=255)
-<<<<<<< HEAD
-    fileshare = models.BooleanField(default=True)
-    changeoccur = models.BooleanField(default=True)
-    commentpost = models.BooleanField(default=True)
-=======
     newfile = models.BooleanField(default=True)
     newchange = models.BooleanField(default=True)
     newcomment = models.BooleanField(default=True)
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
     newmessage = models.BooleanField(default=True)
 
     class Meta:
@@ -254,22 +196,6 @@ class MailBell(models.Model):
     def __str__(self):#to string
         return CustomUser.__str__(self.user)
 
-<<<<<<< HEAD
-class OrgConRights(models.Model):
-    org = models.ForeignKey("Organization",on_delete=models.CASCADE,related_name="con_right",verbose_name="organization")
-    con = models.ForeignKey("Contract",on_delete=models.CASCADE,related_name="org_right",verbose_name="contract")
-    #user = models.ForeignKey("Contract",on_delete=models.CASCADE,related_name="chief",verbose_name="chief")
-    ROLE_TYPE = (
-        ('1', 'Role1'),
-        ('2', 'Role2'),
-        ('3', 'Role3'),
-        ('4', 'Role4'),
-    )
-    role = models.CharField(max_length=1,choices=ROLE_TYPE,default='4')
-    nb_acct = models.IntegerField(verbose_name="number of account related")
-
-    exer_create = models.BooleanField(default=False)
-=======
 ROLE_TYPE = (
         ('A', 'Approver'),
         ('C', 'Contributer'),
@@ -288,27 +214,10 @@ class OrgConRight(models.Model):
     is_principal = models.BooleanField(default=False)
     staff = models.ManyToManyField("CustomUser",related_name="con")
     chief = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="con_staff",null=True)
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
 
     class Meta:
         ordering = ['org','con']
         unique_together = ('org','con')
-<<<<<<< HEAD
-    def getter(_org:Organization,_con:Contract): #getter by pk
-        right = OrgExerRights.objects.filter(org=_org,con=_con)
-        if right:
-            return right[0]
-        else:
-            return None
-        
-    def __str__(self):#to string
-        return Exercise.__str__(self.con)+Organization.__str__(self.org)
-    
-class UserConRights(models.Model):
-    user = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="con_right")
-    con = models.ForeignKey("Contract",on_delete=models.CASCADE,related_name="user_right",verbose_name="contract")
-
-=======
     # def getter(_org:Organization,_con:Contract): #getter by pk
     #     right = OrgExerRight.objects.filter(org=_org,con=_con)
     #     if right:
@@ -323,28 +232,10 @@ class UserConRight(models.Model):
     user = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="con_rights")
     con = models.ForeignKey("Contract",on_delete=models.CASCADE,related_name="user_rights",verbose_name="contract")
     # rights
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
     is_chief = models.BooleanField(default=False)
     # output = models.BooleanField(default=False)
 
     class Meta:
-<<<<<<< HEAD
-        ordering = ['con','user']
-        unique_together = ('con','user')
-    def getter(_org:Organization,_con:Contract): #getter by pk
-        right = OrgExerRights.objects.filter(org=_org,con=_con)
-        if right:
-            return right[0]
-        else:
-            return None
-        
-    def __str__(self):#to string
-        return Exercise.__str__(self.con)+Organization.__str__(self.org)
-
-class OrgExerRights(models.Model):
-    org = models.ForeignKey("Organization",on_delete=models.CASCADE,related_name="exer_right")
-    exer = models.ForeignKey("Exercise",on_delete=models.CASCADE,related_name="org_right")
-=======
         ordering = ['user','con']
         unique_together = ('user','con')
     # def getter(_org:Organization,_con:Contract): # getter by pk
@@ -362,7 +253,6 @@ class OrgExerRight(models.Model):
     exer = models.ForeignKey("Exercise",on_delete=models.CASCADE,related_name="org_rights",verbose_name="exercise")
     
     role = models.CharField(max_length=1,choices=ROLE_TYPE,default='U')
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
     input = models.BooleanField(default=False)
     output = models.BooleanField(default=False)
     graph = models.BooleanField(default=False)
@@ -372,44 +262,26 @@ class OrgExerRight(models.Model):
     #modifier ses propres documents une fois partagé
     comment = models.BooleanField(default=False)
     download = models.BooleanField(default=False)
-<<<<<<< HEAD
-=======
     share = models.BooleanField(default=False)
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
 
     class Meta:
         ordering = ['org','exer']
         unique_together = ('org','exer')
-<<<<<<< HEAD
-    def getter(_org:Organization,_exer:Exercise): #getter by pk
-        right = OrgExerRights.objects.filter(org=_org,exer=_exer)
-        if right:
-            return right[0]
-        else:
-            return None
-=======
     # def getter(_org:Organization,_exer:Exercise): #getter by pk
     #     right = OrgExerRight.objects.filter(org=_org,exer=_exer)
     #     if right:
     #         return right[0]
     #     else:
     #         return None
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
         
     def __str__(self):#to string
         return Exercise.__str__(self.exer)+Organization.__str__(self.org)
 
-<<<<<<< HEAD
-class UserExerRights(models.Model):
-    user = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="exer_right")
-    exer = models.ForeignKey("Exercise",on_delete=models.CASCADE,related_name="user_right")
-=======
 class UserExerRight(models.Model):
     user = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="exer_rights")
     exer = models.ForeignKey("Exercise",on_delete=models.CASCADE,related_name="user_rights",verbose_name="exercise")
     
     role = models.CharField(max_length=1,choices=ROLE_TYPE,default='U')
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
     input = models.BooleanField(default=False)
     output = models.BooleanField(default=False)
     graph = models.BooleanField(default=False)
@@ -419,31 +291,11 @@ class UserExerRight(models.Model):
     #modifier ses propres documents une fois partagé
     comment = models.BooleanField(default=False)
     download = models.BooleanField(default=False)
-<<<<<<< HEAD
-=======
     share = models.BooleanField(default=False)
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
 
     class Meta:
         ordering = ['user','exer']
         unique_together = ('user','exer')
-<<<<<<< HEAD
-    def getter(_user:Organization,_exer:Exercise): #getter by pk
-        right = OrgExerRights.objects.filter(user=_user,exer=_exer)
-        if right:
-            return right[0]
-        else:
-            return None
-        
-    def __str__(self):#to string
-        return Exercise.__str__(self.exer)+Organization.__str__(self.user)
-    
-class FileAccess(models.Model): # as access in code
-    file = models.OneToOneField("File",on_delete=models.CASCADE,primary_key=True,related_name="access")
-    user = models.ManyToManyField("CustomUser",related_name="access")
-    org = models.ManyToManyField("Organization",related_name="access",verbose_name="Organization")
-    is_public = models.BooleanField(default=False)
-=======
     # def getter(_user:Organization,_exer:Exercise): #getter by pk
     #     right = OrgExerRight.objects.filter(user=_user,exer=_exer)
     #     if right:
@@ -471,4 +323,3 @@ class Share(models.Model):
         ordering = ['from_user','to_user','file']
         unique_together = ('from_user','to_user','file')
     
->>>>>>> c0c20ab1fe9b10769c376b143edde9448a270d52
