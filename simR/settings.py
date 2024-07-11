@@ -120,7 +120,7 @@ SIMPLE_JWT = { #Json Web tokens settings
 CORS_ALLOWED_ORIGINS = [ #CROS protector
     "http://localhost:3000",
     "http://127.0.0.1:8000",
-    "https://liveblocks-template-test.vercel.app/",
+    "https://liveblocks-template-test.vercel.app",
 ]
 
 SOCIALACCOUNT_PROVIDERS = {
