@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-m121fuicgj5gd-4a1g@6jkitxbc%inpycqi8*8n*s#%^s6s$!2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['https://simr-backend.onrender.com']
 
 
 # Application definition
@@ -120,6 +120,7 @@ SIMPLE_JWT = { #Json Web tokens settings
 CORS_ALLOWED_ORIGINS = [ #CROS protector
     "http://localhost:3000",
     "http://127.0.0.1:8000",
+    "https://liveblocks-template-test.vercel.app/",
 ]
 
 SOCIALACCOUNT_PROVIDERS = {
