@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-m121fuicgj5gd-4a1g@6jkitxbc%inpycqi8*8n*s#%^s6s$!2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['https://simr-backend.onrender.com']
+ALLOWED_HOSTS = ['simr-backend.onrender.com']
 
 
 # Application definition
