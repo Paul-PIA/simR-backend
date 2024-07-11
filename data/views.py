@@ -21,6 +21,20 @@ from .permissions import CanDo as CD
 # from django.template import loader
 # from .serializers import TestSerializer
 
+from django.shortcuts import HttpResponse
+from django.contrib.auth import get_user_model
+
+def create_superuser_view(request):
+    User = get_user_model()
+    if not User.objects.filter(username='admin').exists():
+        User.objects.create_superuser(
+            username='admin',
+            email='admin@example.com',
+            password='adminpassword'
+        )
+        return HttpResponse("Superuser created successfully.")
+    return HttpResponse("Superuser already exists.")
+
 
 def index(request):
     return HttpResponse("Here drops the principal homepage.")

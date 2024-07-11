@@ -4,10 +4,12 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from dj_rest_auth.views import PasswordResetView, PasswordResetConfirmView
 from . import views
 from .routers import router
+from .views import create_superuser_view
 
 app_name = "data"
 
 urlpatterns = [
+    path('create-superuser/', create_superuser_view, name='create_superuser'),
     path("", views.index, name="index"),
     # path("<int:id>/", views.profile, name="profile"),
     path('api/', include(router.urls)),
