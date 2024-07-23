@@ -11,8 +11,10 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import os
 from pathlib import Path
+
+from decouple import config
 from datetime import timedelta # import this library top of the settings.py file
-# Import dj-database-url at the beginning of the file.
+
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -28,7 +30,7 @@ SECRET_KEY = 'django-insecure-m121fuicgj5gd-4a1g@6jkitxbc%inpycqi8*8n*s#%^s6s$!2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['simr-backend.onrender.com', '127.0.0.1']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -60,11 +62,13 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
     'allauth.socialaccount.providers.github',
+    # celery 
+    'django_celery_beat',
+    'django_celery_results',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -76,6 +80,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     #allauth regisration
     "allauth.account.middleware.AccountMiddleware",
+    # whitenoise
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
 ROOT_URLCONF = 'simR.urls'
@@ -149,24 +155,22 @@ WSGI_APPLICATION = 'simR.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        "NAME": "dj_test",
-        "USER": "postgres",
-        "PASSWORD": "1234",
-        "HOST": "localhost",
-        "PORT": "5432",
-    }
-}
-
-# Replace the SQLite DATABASES configuration with PostgreSQL:
 # DATABASES = {
-#     'default': dj_database_url.config(
-#         default='postgresql://simr_database_user:xeEHN9eDlxtVK0FRIZPl7MbfsM5uJqHR@dpg-cpvb4t1u0jms73aom790-a/simr_database',
-#         conn_max_age=600
-#     )
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         "NAME": "dj_test",
+#         "USER": "postgres",
+#         "PASSWORD": "1234",
+#         "HOST": "localhost",
+#         "PORT": "5432",
+#     }
 # }
+DATABASES = {
+    'default': dj_database_url.config(
+        default='postgresql://simr_database_user:xeEHN9eDlxtVK0FRIZPl7MbfsM5uJqHR@dpg-cpvb4t1u0jms73aom790-a/simr_database',
+        conn_max_age=600
+    )  
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -202,26 +206,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
-
-# This setting informs Django of the URI path from which your static files will be served to users
-# Here, they well be accessible at your-domain.onrender.com/static/... or yourcustomdomain.com/static/...
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR,'static')
-
-
-# This production code might break development mode, so we check whether we're in DEBUG mode
 if not DEBUG:
-    # Tell Django to copy static assets into a path called `staticfiles` (this is specific to Render)
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-    # Enable the WhiteNoise storage backend, which compresses static files to reduce disk use
-    # and renames the files with unique names for each version to support long-term caching
+    STATIC_ROOT = os.path.join(BASE_DIR,'staticfiles')
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-STATICFILES_DIR = [
-    BASE_DIR/'static'
-]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -276,3 +264,11 @@ SPECTACULAR_SETTINGS = { #API documentation
 
 MEDIA_ROOT = os.path.join(BASE_DIR,'media')
 MEDIA_URL = '/media/'
+
+# DEBUG = True
+DEBUG = config("DEBUG", cast=bool, default=False)
+
+# save Celery task results in Django's database
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'

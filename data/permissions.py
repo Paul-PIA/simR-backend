@@ -4,106 +4,106 @@ from .models import CustomUser,Organization,Contract,Exercise,File,Comment
 from .models import FileAccess,MailBell,Share
 from .models import OrgConRight,OrgExerRight,UserExerRight
 
-class IsAdmin(permissions.BasePermission):
-    def has_object_permission(self, request, view, obj):
-        obj_type_name = type(obj).__name__
-        if request.method in permissions.SAFE_METHODS:#stop getting some sensible data
-            if request.method == 'GET':
-                return request.user.is_staff 
-            return True
-        if obj_type_name == "Organization":#control Organization
-            return request.user.is_staff
-        if obj_type_name == "Contract":#delete Contract
-            if request.method == 'DELETE':
-                return request.user.is_staff
-        # if obj_type_name == "CustomUser":
-        #     if request.data.get('is_active',None):
-        #         return request.user.is_staff
-        #     if request.data.get('is_staff',None):
-        #         return request.user.is_staff
-        #     if request.data.get('is_superuser',None):
-        #         return request.user.is_staff
-        #     else:
-        #         return True
-        return True
-
-class IsInvited(permissions.BasePermission):#A modifier
-    def has_object_permission(self, request, view, obj):
-        return True
 
 class IsPrincipalAndChief(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        if request.method == 'PUT' and request.method == 'PATCH':#update Contrat and OrgConRight
-            obj_type_name = type(obj).__name__
-            if obj_type_name == "Contract":
-                chief = OrgConRight.objects.get(con=obj,is_principal=True).chief
-            if obj_type_name == "OrgExerRight":
-                chief = OrgConRight.objects.get(con=obj.con,is_principal=True).chief
-            return request.user == chief
-        return True
+        obj_type_name = type(obj).__name__
+        if obj_type_name == "Contract":
+            chief = OrgConRight.objects.select_related('chief').get(con=obj,is_principal=True).chief
+        return request.user == chief
+
+def get_chief(obj):
+    obj_type_name = type(obj).__name__
+    chief = None
+    right = OrgConRight.objects.select_related('chief').all()
+    if obj_type_name == "Exercise":#find the creator of exer
+        chief = obj.chief
+    if obj_type_name == "OrgConRight":
+        chief = obj.chief
+    if obj_type_name == "OrgExerRight":#find the creator of exer
+        chief = obj.exer.chief
+    if obj_type_name == "UserExerRight":#set right, find user's chief
+        chief = right.filter(staff=obj.user,con=obj.exer.con).chief
+    if obj_type_name == "Comment":#to assign a comment, find uploader's chief
+        chief = right.filter(staff=obj.uploader,con=obj.con).chief
+    if obj_type_name == "File":#to set file state, find the creator of exer
+        chief = obj.exer.chief
+    return chief
 
 class IsChief(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:#pass get
-            return True
-        obj_type_name = type(obj).__name__
-        if obj_type_name == "Exercise":#control Exercise
-            chief = OrgConRight.objects.get(con=obj.con,org=obj.org).chief
-        if request.method == 'PUT' or request.method == 'PATCH':#update OrgConRight,UserExerRight
-            if obj_type_name == "OrgConRight":
-                chief = obj.chief
-            if obj_type_name == "UserExerRight":
-                chief = OrgConRight.objects.get(con=obj.exer.con,org=obj.user.org).chief
-        return chief == request.user
+        return get_chief(obj) == request.user
+    def has_permission(self, request, view):
+        if request.method == "POST":#create Exercise
+            org = request.user.org
+            con = request.data.get('con')
+            right = OrgConRight.objects.select_related('chief').filter(con=con,org=org)
+            if not right.exists():
+                return False
+            return right.first().chief == request.user
+        return super().has_permission(request, view)
 
 class IsSelf(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         obj_type_name = type(obj).__name__
-        if request.method == 'PUT' or request.method == 'PATCH':#update User,MailBell,Share,Comment
-            if obj_type_name == "CustomUser":
-                user = obj
-            elif obj_type_name == "MailBell":
-                user = obj.user
-            elif obj_type_name == "Share":
-                user = obj.from_user
-            elif obj_type_name == "Comment":
-                user = obj.commenter
-            return request.user == user
-        elif request.method == 'DELETE':#delete User,Comment
-            obj_type_name = type(obj).__name__
-            if obj_type_name == "CustomUser":
-                user = obj
-            if obj_type_name == "Comment":
-                user = obj.commenter
-            return request.user == user
-        return True
+        if obj_type_name == "CustomUser":
+            user = obj
+        if obj_type_name == "MailBell":
+            user = obj.user
+        if obj_type_name == "Share":
+            user = obj.from_user
+        if obj_type_name == "Comment":
+            user = obj.commenter
+        return request.user == user
+    def has_permission(self, request, view):
+        if view.action == 'create': # upload file
+            exer = request.data.get('exer',None)
+            if not exer:
+                return False
+            right = UserExerRight.objects.filter(user=request.user,exer=exer)
+            return right.exists()
+        return super().has_permission(request, view)
     
 class CanDo(permissions.BasePermission):#Examine the right
     def has_object_permission(self, request, view, obj):
         obj_type_name = type(obj).__name__
-        if request.method == 'POST': # to upload,comment and share
-            data = request.query_params
-            if obj_type_name == 'Comment':
+        if obj_type_name == 'File':
+            access = FileAccess.objects.select_related('user').get(file=obj)
+            if not (request.user in access.user.all()):
                 return False
-                # file = data.get('file',None)
-                # if not file:
-                #     return False
-                # access = FileAccess.objects.get(file=file)
-                # if not (request.user in access.user.all()):
-                #     return False
-                # right = UserExerRight.objects.filter(user=request.user,exer=file.exer)
-                # if not right.exists:
-                #     return False
-                # return right.comment
-        #     if obj_type_name == 'Share':
-        #         file = data.get('file',None)
-        #         if not file:
-        #             return False
-        #         access = FileAccess.objects.get(file=file)
-        #         if not (request.user in access.user.all()):
-        #             return False
-        #         right = UserExerRight.objects.filter(user=request.user,exer=file.exer)
-        #         if not right.exists:
-        #             return False
-        #         return right.share
-        
+            right = UserExerRight.objects.filter(user=request.user,files=obj)
+            if not right.exists:
+                return False
+            return right.first().rewrite
+        return True
+    def has_permission(self, request, view):
+        if request.method == 'POST': # while creating ...
+            file = request.data.get("file",None)
+            if not file:
+                return False
+            access = FileAccess.objects.prefetch_related('user').get(file=file)
+            if not (request.user in access.user.all()): # check access
+                return False
+            right = UserExerRight.objects.filter(user=request.user,exer=access.file.exer)
+            if not right.exists: # check in the exer
+                return False
+            if view.queryset.model == Share: # ... a share
+                return right.first().share
+            if view.queryset.model == Comment: # ... a comment
+                return right.first().comment
+        return super().has_permission(request, view)
+
+# class CanInvite(permissions.BasePermission):
+#     def has_permission(self, request, view):
+#         return super().has_permission(request, view)
+
+class IsOtherChief(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        obj_type_name = type(obj).__name__
+        if obj_type_name == 'File': # to raise boycott
+            right = OrgConRight.objects.filter(con=obj.con,chief=request.user) # get chiefs
+            if not right.exists(): # refuse non-chief
+                return False
+            if request.user.org == obj.exer.org: # refuse in charge
+                return False
+        return super().has_object_permission(request, view, obj)
