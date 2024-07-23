@@ -1,13 +1,10 @@
 
 databases:
-
   - name: simR-database
-
     plan: free
-
     databaseName: simr_database
-
     user: simr_database_user
+
 
 
 
