@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 import os
 from pathlib import Path
 
-from decouple import config
 from datetime import timedelta # import this library top of the settings.py file
 
 import dj_database_url
@@ -62,9 +61,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
     'allauth.socialaccount.providers.github',
-    # celery 
-    'django_celery_beat',
-    'django_celery_results',
+
 ]
 
 MIDDLEWARE = [
