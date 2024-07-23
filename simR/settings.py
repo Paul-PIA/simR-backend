@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-m121fuicgj5gd-4a1g@6jkitxbc%inpycqi8*8n*s#%^s6s$!2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['simr-backend.onrender.com']
+ALLOWED_HOSTS = ['simr-backend.onrender.com', '127.0.0.1']
 
 
 # Application definition
@@ -149,25 +149,24 @@ WSGI_APPLICATION = 'simR.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         "NAME": "dj_test",
-#         "USER": "postgres",
-#         "PASSWORD": "1234",
-#         "HOST": "localhost",
-#         "PORT": "5432",
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        "NAME": "dj_test",
+        "USER": "postgres",
+        "PASSWORD": "1234",
+        "HOST": "localhost",
+        "PORT": "5432",
+    }
+}
 
 # Replace the SQLite DATABASES configuration with PostgreSQL:
-DATABASES = {
-    'default': dj_database_url.config(
-        # Replace this value with your local database's connection string.
-        default='postgresql://simr_database_user:xeEHN9eDlxtVK0FRIZPl7MbfsM5uJqHR@dpg-cpvb4t1u0jms73aom790-a/simr_database',
-        conn_max_age=600
-    )
-}
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default='postgresql://simr_database_user:xeEHN9eDlxtVK0FRIZPl7MbfsM5uJqHR@dpg-cpvb4t1u0jms73aom790-a/simr_database',
+#         conn_max_age=600
+#     )
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
