@@ -1,3 +1,6 @@
+from datetime import datetime,timedelta
+import uuid
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
@@ -14,32 +17,8 @@ class CustomUser(AbstractUser): ### as user in code
 
     class Meta:
         ordering = ['-last_login']
-    def getter(_id:int): #getter by id
-        instance = CustomUser.objects.filter(id=_id)
-        if instance:
-            return instance[0]
-        else:
-            return None
-    def get_admin():
-        L = CustomUser.objects.all()[:1]
-        return L[0]
-    
     def __str__(self):#to string
         return self.username
-    
-    ### saver
-    # def clean(self):
-    #     if not self.is_superuser:
-    #         required_fields = ['tel','adrs','post','city']
-    #         for field in required_fields:
-    #             value = getattr(self,field)
-    #             if not value:
-    #                 raise ValidationError({field:f"field.replace('_',' ').capitalize is required for regular users."})
-    # def save(self):
-    #     self.clean()
-    #     super().save(self)
-            
-    ### getters
 
 class Organization(models.Model): ### as org in code
     #id_org = models.IntegerField(primary_key=True)
@@ -51,12 +30,6 @@ class Organization(models.Model): ### as org in code
 
     class Meta:
         ordering = ['name']
-    def getter(_id:int): #getter by id
-        instance = Organization.objects.filter(id=_id)
-        if instance:
-            return instance[0]
-        else:
-            return None
 
     def __str__(self):#to string
         return self.name
@@ -67,18 +40,10 @@ class Contract(models.Model):  ### as con in code
     nb_org = models.IntegerField(verbose_name="maximum of organization")
     nb_access = models.IntegerField(verbose_name="maximum of access")
     ### relation
-    #org_pr = models.ForeignKey("Organization",on_delete=models.PROTECT,verbose_name="principal organization")
     org = models.ManyToManyField("Organization",related_name="cons",verbose_name="organizations")
     
     class Meta:
         ordering = ['name']
-    def getter(_id:int): #getter by id
-        instance = Contract.objects.filter(id=_id)
-        if instance:
-            return instance[0]
-        else:
-            return None
-        
     def __str__(self):#to string
         return self.name
 
@@ -98,27 +63,19 @@ class Exercise(models.Model):  ### as exer in code
     ### relation
     con = models.ForeignKey("Contract",on_delete=models.CASCADE,related_name="exers",verbose_name="contract")
     org = models.ForeignKey("Organization",on_delete=models.PROTECT,related_name="exers",verbose_name="organization in charge")
+    chief = models.ForeignKey("CustomUser",on_delete=models.PROTECT,related_name="exers",null=True)
     
     class Meta:
         ordering = ['-date_i','-date_f']
-    def getter(_id:int): #getter by id
-        instance = Exercise.objects.filter(id=_id)
-        if instance:
-            return instance[0]
-        else:
-            return None
     def __str__(self): #to string
         return self.name
     
 def file_path(instance,filename):
-    # file will be uploaded to MEDIA_ROOT
-    # con = instance['con']
-    # exer = instance['exer']
-    # name = instance['name']
-    return "contract_{2}/exercise_{0}/{1}".format(
+    return "contract_{0}/exercise_{1}/{2}".format(
+        instance.con.id,
         instance.exer.id,
-        instance.name,
-        instance.con.id)
+        instance.name
+    )
 
 class File(models.Model):
     #id = models.IntegerField(primary_key=True)
@@ -139,12 +96,6 @@ class File(models.Model):
     
     class Meta:
         ordering = ['name']
-    def getter(_id:int): #getter by id
-        instance = File.objects.filter(id=_id)
-        if instance:
-            return instance[0]
-        else:
-            return None
         
     def __str__(self):#to string
         return self.name
@@ -154,7 +105,7 @@ class Comment(models.Model):
     line = models.IntegerField()
     colone = models.IntegerField()
     text = models.TextField(max_length=4095)
-    time = models.DateTimeField(auto_now=True)
+    time = models.DateTimeField(auto_now_add=True)
     ### status
     is_treated = models.BooleanField(default=False)
     ### relation
@@ -164,16 +115,25 @@ class Comment(models.Model):
     file = models.ForeignKey("File",on_delete=models.CASCADE,related_name='comments')
     
     class Meta:
-        ordering = ['file',]
-    def getter(_id:int): #getter by id
-        instance = Comment.objects.filter(id=_id)
-        if instance:
-            return instance[0]
-        else:
-            return None
-        
+        ordering = ['file',]        
     def __str__(self):#to string
         return self.text
+
+def set_token():
+    return uuid.uuid4().__str__()
+
+class Invitation(models.Model):
+    token = models.CharField(default=set_token,unique=True)
+    email = models.EmailField(max_length=63,null=True)
+    activated_at = models.DateTimeField(auto_now_add=True)
+    expired_at = models.DateTimeField(default=datetime.now()+timedelta(days=1))
+    is_used = models.BooleanField(default=False)
+    ### relation
+    inviter = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="invitations",null=True)
+    class Meta:
+        ordering = ['id','activated_at','expired_at']        
+    def __str__(self):#to string
+        return self.token
 
 ### rights
 class MailBell(models.Model):
@@ -212,8 +172,8 @@ class OrgConRight(models.Model):
     # rights
     # exer_create = models.BooleanField(default=False)
     is_principal = models.BooleanField(default=False)
-    staff = models.ManyToManyField("CustomUser",related_name="con")
-    chief = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="con_staff",null=True)
+    staff = models.ManyToManyField("CustomUser",related_name="con_staff")
+    chief = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="con_chief",null=True)
 
     class Meta:
         ordering = ['org','con']
@@ -227,26 +187,6 @@ class OrgConRight(models.Model):
         
     def __str__(self):#to string
         return Contract.__str__(self.con)+Organization.__str__(self.org)
-    
-class UserConRight(models.Model):
-    user = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="con_rights")
-    con = models.ForeignKey("Contract",on_delete=models.CASCADE,related_name="user_rights",verbose_name="contract")
-    # rights
-    is_chief = models.BooleanField(default=False)
-    # output = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ['user','con']
-        unique_together = ('user','con')
-    # def getter(_org:Organization,_con:Contract): # getter by pk
-    #     right = OrgExerRight.objects.filter(org=_org,con=_con)
-    #     if right:
-    #         return right[0]
-    #     else:
-    #         return None
-        
-    def __str__(self):# to string
-        return Contract.__str__(self.con)+CustomUser.__str__(self.user)
 
 class OrgExerRight(models.Model):
     org = models.ForeignKey("Organization",on_delete=models.CASCADE,related_name="exer_rights",verbose_name="organization")
@@ -316,7 +256,7 @@ class Share(models.Model):
     to_user = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="shared_by")
     file = models.ForeignKey("File",on_delete=models.CASCADE,related_name="share")
 
-    date = models.DateTimeField(auto_now=True)
+    date = models.DateTimeField(auto_now_add=True)
     message = models.TextField(null=True,blank=True)
     between_org = models.BooleanField(default=False)
     class Meta:

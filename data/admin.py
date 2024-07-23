@@ -2,7 +2,7 @@ from django.contrib import admin
 
 # Register your models here.
 from .models import CustomUser,Organization,Contract,Exercise,File,Comment
-from .models import OrgConRight,OrgExerRight,UserConRight,UserExerRight,MailBell,FileAccess,Share
+from .models import OrgConRight,OrgExerRight,UserExerRight,MailBell,FileAccess,Share
 
 ### instances
 @admin.register(CustomUser)
@@ -53,10 +53,6 @@ class ShareAdmin(admin.ModelAdmin):
 class OrgConAdmin(admin.ModelAdmin):
     list_display = ('id','org','con','chief')
     list_filter = ('org','con')
-@admin.register(UserConRight)
-class UserConAdmin(admin.ModelAdmin):
-    list_display = ('id','user','con')
-    list_filter = ('user','con')
 @admin.register(OrgExerRight)
 class OrgExerAdmin(admin.ModelAdmin):
     list_display = ('id','org','exer')

@@ -1,0 +1,40 @@
+
+databases:
+
+  - name: simR-database
+
+    plan: free
+
+    databaseName: simr_database
+
+    user: simr_database_user
+
+
+
+services:
+
+  - type: web
+
+    plan: free
+
+    name: simR
+
+    runtime: python
+
+    buildCommand: "./build.sh"
+
+    startCommand: "python -m gunicorn simR.asgi:application -k uvicorn.workers.UvicornWorker"
+
+    envVars:
+
+      - key: DATABASE_URL
+
+        fromDatabase: simR-database
+
+      - key: SECRET_KEY
+
+        generateValue: true
+
+      - key: WEB_CONCURRENCY
+
+        value: 4

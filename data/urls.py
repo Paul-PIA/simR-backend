@@ -24,11 +24,16 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
-    #special APIs
-    path('api/myspaceshare/',views.MySpaceShareView.as_view()),
-    path('api/myspaceall/',views.MySpaceAllView.as_view()),
-    path('api/orgspace/',views.OrgSpaceView.as_view()),
-    path('api/publicspace/',views.PublicSpaceView.as_view()),
 
+    #special APIs
+    path('api/setuserstate/',views.SetUserStateView.as_view()),
+    path('api/setfilestate/',views.SetFileStateView.as_view()),
+    path('api/assigncomment/',views.AssignCommentView.as_view()),
+    path('api/treatcomment/',views.TreatCommentView.as_view()),
+    path('api/distributeaccount/',views.DistributeAccountView.as_view()),
+    path('api/setchief/',views.SetChiefView.as_view()),
+    path('api/raiseboycott/',views.RaiseBoycottView.as_view()),
+
+    path('api/invitechief/',views.InviteChiefView.as_view()),
     #path('api/test/',views.TestView.as_view()),
 ]
