@@ -2,12 +2,20 @@ from django.contrib import admin
 
 # Register your models here.
 from .models import CustomUser,Organization,Contract,Exercise,File,Comment
+<<<<<<< HEAD
 from .models import OrgConRights,OrgExerRights,UserConRights,UserExerRights,MailBell,FileAccess
+=======
+from .models import OrgConRight,OrgExerRight,UserExerRight,MailBell,FileAccess,Share
+>>>>>>> master
 
 ### instances
 @admin.register(CustomUser)
 class UserAdmin(admin.ModelAdmin):
+<<<<<<< HEAD
     list_display = ('id','first_name','last_name','username','email','last_login')
+=======
+    list_display = ('id','first_name','last_name','username','email','last_login','org')
+>>>>>>> master
     list_filter = ('last_login','date_joined')
 
 @admin.register(Organization)
@@ -35,4 +43,33 @@ class CommentAdmin(admin.ModelAdmin):
     list_display = ('id','file','text')
     list_filter = ('is_treated',)
 
+<<<<<<< HEAD
 ### rights
+=======
+### right
+@admin.register(MailBell)
+class MailBellAdmin(admin.ModelAdmin):
+    list_display = ('user',)
+    list_filter = ()
+@admin.register(FileAccess)
+class AccessAdmin(admin.ModelAdmin):
+    list_display = ('file',)
+    list_filter = ('user','org',)
+@admin.register(Share)
+class ShareAdmin(admin.ModelAdmin):
+    list_display = ('id','from_user','to_user','date','file','between_org',)
+    list_filter = ('date','between_org',)
+
+@admin.register(OrgConRight)
+class OrgConAdmin(admin.ModelAdmin):
+    list_display = ('id','org','con','chief')
+    list_filter = ('org','con')
+@admin.register(OrgExerRight)
+class OrgExerAdmin(admin.ModelAdmin):
+    list_display = ('id','org','exer')
+    list_filter = ('org','exer')
+@admin.register(UserExerRight)
+class UserExerAdmin(admin.ModelAdmin):
+    list_display = ('id','user','exer')
+    list_filter = ('user','exer')
+>>>>>>> master

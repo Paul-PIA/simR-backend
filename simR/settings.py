@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import os
 from pathlib import Path
+
+from decouple import config
+from datetime import timedelta # import this library top of the settings.py file
+
 import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -26,14 +30,12 @@ SECRET_KEY = 'django-insecure-m121fuicgj5gd-4a1g@6jkitxbc%inpycqi8*8n*s#%^s6s$!2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'simr-backend.onrender.com']
+ALLOWED_HOSTS = []
 
 
 # Application definition
 
 INSTALLED_APPS = [
-
-    'corsheaders',
     'data.apps.DataConfig',
 
     'django.contrib.admin',
@@ -43,7 +45,16 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     "django.contrib.sites",  # new
+    
+    'django_filters',#filter API
+    'rest_framework',# bridge to API
+    'rest_framework.authtoken',# bridge to API
+    'drf_spectacular',# docs of API
 
+    "corsheaders",# CORS protector
+    
+    'dj_rest_auth',# combine DRF and allauth
+    'dj_rest_auth.registration',# combine DRF and allauth
     'allauth',
     'allauth.account',
     # Optional -- requires install using `django-allauth[socialaccount]`.
@@ -51,35 +62,27 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
     'allauth.socialaccount.providers.github',
-
+    # celery 
+    'django_celery_beat',
+    'django_celery_results',
 ]
-
-
-AUTHENTICATION_BACKENDS = (
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
-)
-
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
-    'simR.middleware.SyncToAsyncMiddleware',
-
-    "allauth.account.middleware.AccountMiddleware",#allauth regisration
-
-    'corsheaders.middleware.CorsMiddleware',
-
+    #CORS protector
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    #allauth regisration
+    "allauth.account.middleware.AccountMiddleware",
+    # whitenoise
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
-
-CORS_ALLOW_ALL_ORIGINS = True   
 
 ROOT_URLCONF = 'simR.urls'
 
@@ -99,6 +102,31 @@ TEMPLATES = [
     },
 ]
 
+REST_FRAMEWORK = {# API framework
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+SIMPLE_JWT = { #Json Web tokens settings
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+    'SLIDING_TOKEN_LIFETIME': timedelta(days=30),
+    'SLIDING_TOKEN_REFRESH_LIFETIME_LATE_USER': timedelta(days=1),
+    'SLIDING_TOKEN_LIFETIME_LATE_USER': timedelta(days=30),
+}
+CORS_ALLOWED_ORIGINS = [ #CROS protector
+    "http://localhost:3000",
+    "http://127.0.0.1:8000",
+]
 
 SOCIALACCOUNT_PROVIDERS = {
     # For each OAuth based provider, either add a ``SocialApp``
@@ -136,11 +164,11 @@ WSGI_APPLICATION = 'simR.wsgi.application'
 #         "PORT": "5432",
 #     }
 # }
-
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL')
-    )
+        default='postgresql://simr_database_user:xeEHN9eDlxtVK0FRIZPl7MbfsM5uJqHR@dpg-cpvb4t1u0jms73aom790-a/simr_database',
+        conn_max_age=600
+    )  
 }
 
 # Password validation
@@ -178,20 +206,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = '/static/'
-
 if not DEBUG:
-    # Tell Django to copy static assets into a path called `staticfiles` (this is specific to Render)
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-    # Enable the WhiteNoise storage backend, which compresses static files to reduce disk use
-    # and renames the files with unique names for each version to support long-term caching
+    STATIC_ROOT = os.path.join(BASE_DIR,'staticfiles')
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-STATICFILES_DIR = [
-    BASE_DIR/'static'
-]
-
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -230,9 +247,27 @@ ACCOUNT_RATE_LIMITS = {
     # Users can request email confirmation mails via the email management view, and, implicitly, when logging in with an unverified account. This rate limit prevents users from sending too many of these mails.
 }
 
+REST_USE_JWT = True #optional, instead of Bearer tokens
 SITE_ID = 1 
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"  # new
-#or any other page  
-ACCOUNT_LOGOUT_REDIRECT_URL ='/accounts/login/' 
+#or any other page 
+ACCOUNT_LOGOUT_REDIRECT_URL ='/accounts/login/'
 
-ASYNC_SUPPORT = True
+SPECTACULAR_SETTINGS = { #API documentation 
+    'TITLE': 'SimR API',
+    'DESCRIPTION': 'Still in test',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # OTHER SETTINGS
+}
+
+MEDIA_ROOT = os.path.join(BASE_DIR,'media')
+MEDIA_URL = '/media/'
+
+# DEBUG = True
+DEBUG = config("DEBUG", cast=bool, default=False)
+
+# save Celery task results in Django's database
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
