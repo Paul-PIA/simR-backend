@@ -57,12 +57,12 @@ class OrgViewSet(viewsets.ModelViewSet):
     serializer_class = OrgSerializer
     filterset_class = OrgFilter
     ordering_fields = ["id",]
-    def get_permissions(self):
-        if self.action in ['create','update','partial_update','destroy']:
-            permission_classes = [permissions.IsAdminUser]
-        else:
-            permission_classes = [permissions.IsAuthenticated]
-        return [per() for per in permission_classes]
+    # def get_permissions(self):
+    #     if self.action in ['create','update','partial_update','destroy']:
+    #         permission_classes = [permissions.IsAdminUser]
+    #     else:
+    #         permission_classes = [permissions.IsAuthenticated]
+    #     return [per() for per in permission_classes]
 class ConViewSet(viewsets.ModelViewSet):
     queryset = Contract.objects.prefetch_related('org').all()
     serializer_class = ConSerializer

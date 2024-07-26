@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import os
 from pathlib import Path
+
 from datetime import timedelta # import this library top of the settings.py file
 
 import dj_database_url
@@ -28,7 +29,7 @@ SECRET_KEY = 'django-insecure-m121fuicgj5gd-4a1g@6jkitxbc%inpycqi8*8n*s#%^s6s$!2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1:8000', 'simr-backend.onrender.com']
 
 
 # Application definition
@@ -106,7 +107,7 @@ REST_FRAMEWORK = {# API framework
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -125,7 +126,7 @@ SIMPLE_JWT = { #Json Web tokens settings
 CORS_ALLOWED_ORIGINS = [ #CROS protector
     "http://localhost:3000",
     "http://127.0.0.1:8000",
-    "http://simr.vercel.app/"
+    "https://simr.vercel.app",
 ]
 
 SOCIALACCOUNT_PROVIDERS = {
@@ -166,7 +167,7 @@ WSGI_APPLICATION = 'simR.wsgi.application'
 # }
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://simr_database_user:xeEHN9eDlxtVK0FRIZPl7MbfsM5uJqHR@dpg-cpvb4t1u0jms73aom790-a/simr_database',
+        default='postgresql://simr_database_65ep_user:EcJhydOWlT72V9PGXEvZjJfCGWYM8oD0@dpg-cqfrivt6l47c73bkggd0-a/simr_database_65ep',
         conn_max_age=600
     )  
 }
@@ -209,6 +210,10 @@ STATIC_URL = '/static/'
 if not DEBUG:
     STATIC_ROOT = os.path.join(BASE_DIR,'staticfiles')
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
