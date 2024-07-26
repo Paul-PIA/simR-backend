@@ -11,6 +11,7 @@ from .models import CustomUser,Organization,Contract,Exercise,File,Comment,Invit
 from .models import FileAccess,MailBell,Share
 from .models import OrgConRight,OrgExerRight,UserExerRight
 from .permissions import get_chief
+from .tasks import send_celery
 
 class ShareSerializer(serializers.ModelSerializer):
     from_user = serializers.HiddenField(default=serializers.CurrentUserDefault())
@@ -58,7 +59,7 @@ class ShareSerializer(serializers.ModelSerializer):
         if validated_data.get('between_org',None):
             access.org.add(to_user.org)
         if to_user.mailbell.newfile:
-            send_mail(
+            send_celery(
                 "New file shared to you",
                 f"Hello, {to_user}\n {validated_data['from_user'].username} has shared the file {file.name} with you, with message as:\n {validated_data['message']}",
                 None,
@@ -183,13 +184,11 @@ class UserSerializer(serializers.ModelSerializer):
             return value
     def validate(self, attrs):#update org
         org = attrs.get('org',None)
-        try:
-            org_0=self.instance.org
-            if org is not None:
-                raise serializers.ValidationError("The organization can't be modified.")
-        except ODNE:
-            if org is None:
-                raise serializers.ValidationError("The organization is neccessary.")
+        org_0 = self.instance.org
+        if org_0 and org is not None:
+            raise serializers.ValidationError("The organization can't be modified.")
+        if not org_0 and org is None:
+            raise serializers.ValidationError("The organization is neccessary.")
         return super().validate(attrs)
     def update(self, instance, validated_data):
         user = super().update(instance, validated_data)
@@ -257,7 +256,7 @@ class ConSerializer(serializers.ModelSerializer):
         # delete old relationship
         orgcon = orgcon.exclude(org__in=orgs_new).filter(org__in=orgs_old)
         for right in orgcon:
-            userexer.filter(user__in=right.staffs).delete()
+            userexer.filter(user__in=right.staff.all()).delete()
         orgcon.delete()
         orgexer.exclude(org__in=orgs_new).filter(org__in=orgs_old).delete()
         # create new relationship
@@ -392,7 +391,7 @@ class CommentSerializer(serializers.ModelSerializer):
         file.save()
         chief = get_chief(file)
         if chief.mailbell.newcomment:
-            send_mail(
+            send_celery(
                 "New comment to file",
                 f"Hello, {chief.username}\n {self.context['request'].user.username} has commented to the file {file.name}, with content as:\n {validated_data['text']}",
                 None,
@@ -402,14 +401,11 @@ class CommentSerializer(serializers.ModelSerializer):
         return comment
 
 class InvitationSerializer(serializers.ModelSerializer):
+    inviter = serializers.HiddenField(default=serializers.CurrentUserDefault())
     class Meta:
         model = Invitation
         fields = '__all__'
         read_only_fields = ['id','activated_at','expired_at','token','is_used']
-    def create(self, validated_data):
-        validated_data['inviter']=self.context['request'].user
-        invitation = super().create(validated_data)
-        return invitation
 
 # Certain getters, perhaps abandonned
 class SpaceShareSerializer(serializers.ModelSerializer):
@@ -439,73 +435,6 @@ class SetFileStateSerializer(serializers.ModelSerializer):
         model = File
         fields = ['id','is_locked','is_final','is_public']
         read_only_fields = ['id',]
-class RaiseBoycottSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = File
-        fields = ['id','is_boycotted']
-        read_only_fields = ['id','is_boycotted']
-    def update(self, instance, validated_data):
-        instance.is_boycotted = True
-        instance.save()
-        user = self.context['request'].user
-        chief_principal = OrgConRight.objects.get(org=instance.exer.org,con=instance.con).chief
-        send_mail(
-            "New proposition against your template",
-            f"Hello, {chief_principal.name}\n {user.username} has raised a proposition against the file {instance.name}.",
-            None,
-            [chief_principal.email],
-            fail_silently=False,
-        )
-        return super().update(instance, validated_data)
-class AssignCommentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Comment
-        fields = ['id','dealer']
-        read_only_fields = ['id',]
-    def validate(self, attrs):
-        dealer = attrs['dealer']
-        user = self.context['request'].user
-        right = OrgConRight.objects.get(org=user.org,con=self.instance.file.con)
-        if not (dealer in right.staff.all()):
-            raise serializers.ValidationError("You can't assign a comment to non-staff.")
-        return super().validate(attrs)
-    def update(self, instance, validated_data):
-        user = self.context['request'].user
-        assign = super().update(instance, validated_data)
-        if instance.dealer.mailbell.newmessage:
-            send_mail(
-                "New comment to deal with",
-                f"Hello, {instance.dealer.username}\n {user.username} has assigned you a new comment in the file {instance.file.name} to treat, with content as:\n {instance.text}",
-                None,
-                [instance.dealer.email],
-                fail_silently=False,
-            )
-        return assign
-class TreatCommentSerializer(serializers.ModelSerializer):
-    comments = PKRF(queryset=Comment.objects.all(),many=True)
-    class Meta:
-        model = File
-        fields = ['id','comments']
-        read_only_fields = ['id']
-    def validate(self, attrs):
-        list = self.instance.comments.all()
-        for comment in attrs.get('comments',[]):
-            if not comment in list:
-                raise serializers.ValidationError("There are comments not to the file.")
-        return super().validate(attrs)
-    def update(self, instance, validated_data):
-        comments = validated_data['comments'] 
-        instance.is_commented = False
-        list = instance.comments.all(is_treated=False)
-        for comment in list:
-            if comment in comments:
-                comment.is_treated = True
-                comment.save()
-            else:
-                instance.is_commented = True
-        instance.save()
-        return super().update(instance, validated_data)
-
 class DistributeAccountSerializer(serializers.ModelSerializer):
     distribution = serializers.JSONField()
     class Meta:
@@ -549,6 +478,74 @@ class DistributeAccountSerializer(serializers.ModelSerializer):
                     right.nb_access = new_number
                     right.save()
         return super().update(instance, validated_data)
+
+class AssignCommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = ['id','dealer']
+        read_only_fields = ['id',]
+    def validate(self, attrs):
+        dealer = attrs['dealer']
+        user = self.context['request'].user
+        right = OrgConRight.objects.get(org=user.org,con=self.instance.file.con)
+        if not (dealer in right.staff.all()):
+            raise serializers.ValidationError("You can't assign a comment to non-staff.")
+        return super().validate(attrs)
+    def update(self, instance, validated_data):
+        user = self.context['request'].user
+        assign = super().update(instance, validated_data)
+        if instance.dealer.mailbell.newmessage:
+            send_celery(
+                "New comment to deal with",
+                f"Hello, {instance.dealer.username}\n {user.username} has assigned you a new comment in the file {instance.file.name} to treat, with content as:\n {instance.text}",
+                None,
+                [instance.dealer.email],
+                fail_silently=False,
+            )
+        return assign
+class TreatCommentSerializer(serializers.ModelSerializer):
+    comments = PKRF(queryset=Comment.objects.all(),many=True)
+    class Meta:
+        model = File
+        fields = ['id','comments']
+        read_only_fields = ['id']
+    def validate(self, attrs):
+        list = self.instance.comments.all()
+        for comment in attrs.get('comments',[]):
+            if not comment in list:
+                raise serializers.ValidationError("There are comments not to the file.")
+        return super().validate(attrs)
+    def update(self, instance, validated_data):
+        comments = validated_data['comments'] 
+        instance.is_commented = False
+        list = instance.comments.all(is_treated=False)
+        for comment in list:
+            if comment in comments:
+                comment.is_treated = True
+                comment.save()
+            else:
+                instance.is_commented = True
+        instance.save()
+        return super().update(instance, validated_data)
+
+class RaiseBoycottSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = File
+        fields = ['id','is_boycotted']
+        read_only_fields = ['id','is_boycotted']
+    def update(self, instance, validated_data):
+        instance.is_boycotted = True
+        instance.save()
+        user = self.context['request'].user
+        chief_principal = OrgConRight.objects.get(org=instance.exer.org,con=instance.con).chief
+        send_celery(
+            "New proposition against your template",
+            f"Hello, {chief_principal.name}\n {user.username} has raised a proposition against the file {instance.name}.",
+            None,
+            [chief_principal.email],
+            fail_silently=False,
+        )
+        return super().update(instance, validated_data)
     
 # class SetChiefSerializer(serializers.ModelSerializer):
 #     class Meta:
@@ -558,20 +555,3 @@ class DistributeAccountSerializer(serializers.ModelSerializer):
 #     def update(self, instance, validated_data):
 #         validated_data['chief'] = self.context['request'].user
 #         return super().update(instance, validated_data)
-
-
-
-# class TestSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Contract
-#         fields = '__all__'
-    # def create(self, validated_data):
-    #     org_name = validated_data.pop('org')
-    #     name = validated_data.pop('name')
-    #     nb_org = validated_data.pop('nb_org')
-    #     nb_access = validated_data.pop('nb_access')
-    #     filter = Organization.objects.filter(name=org_name)
-    #     if not filter:
-    #         org = Organization.objects.create(name=org_name,adrs="wenzhou",tel="9",post="6")
-    #     con = Contract.objects.create(org=org,name=name,nb_org=nb_org,nb_access=nb_access)
-    #     return con

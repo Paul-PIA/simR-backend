@@ -11,8 +11,6 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import os
 from pathlib import Path
-
-from decouple import config
 from datetime import timedelta # import this library top of the settings.py file
 
 import dj_database_url
@@ -36,8 +34,8 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'data.apps.DataConfig',
-
+    'data.apps.DataConfig', # apps
+    # default
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -63,6 +61,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.facebook',
     'allauth.socialaccount.providers.github',
     # celery 
+    'celery',
     'django_celery_beat',
     'django_celery_results',
 ]
@@ -126,6 +125,7 @@ SIMPLE_JWT = { #Json Web tokens settings
 CORS_ALLOWED_ORIGINS = [ #CROS protector
     "http://localhost:3000",
     "http://127.0.0.1:8000",
+    "http://simr.vercel.app/"
 ]
 
 SOCIALACCOUNT_PROVIDERS = {
@@ -265,9 +265,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR,'media')
 MEDIA_URL = '/media/'
 
 # DEBUG = True
-DEBUG = config("DEBUG", cast=bool, default=False)
+# DEBUG = config("DEBUG", cast=bool, default=False)
 
 # save Celery task results in Django's database
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_CACHE_BACKEND = 'django-cache'
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
+CELERY_BROKER_URL = 'amqp://guest:guest@localhost:5672'
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERELIZER = 'json'
+CELERY_RESULT_SERELIZER = 'json'
+# CELERY_TIMEZONE = 'CET'
+# CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
+

@@ -1,21 +1,13 @@
 from django.contrib import admin
 
 # Register your models here.
-from .models import CustomUser,Organization,Contract,Exercise,File,Comment
-<<<<<<< HEAD
-from .models import OrgConRights,OrgExerRights,UserConRights,UserExerRights,MailBell,FileAccess
-=======
+from .models import CustomUser,Organization,Contract,Exercise,File,Comment,Invitation,Notification
 from .models import OrgConRight,OrgExerRight,UserExerRight,MailBell,FileAccess,Share
->>>>>>> master
 
 ### instances
 @admin.register(CustomUser)
 class UserAdmin(admin.ModelAdmin):
-<<<<<<< HEAD
-    list_display = ('id','first_name','last_name','username','email','last_login')
-=======
     list_display = ('id','first_name','last_name','username','email','last_login','org')
->>>>>>> master
     list_filter = ('last_login','date_joined')
 
 @admin.register(Organization)
@@ -43,9 +35,14 @@ class CommentAdmin(admin.ModelAdmin):
     list_display = ('id','file','text')
     list_filter = ('is_treated',)
 
-<<<<<<< HEAD
-### rights
-=======
+@admin.register(Invitation)
+class InvitationAdmin(admin.ModelAdmin):
+    list_display = ('id','email','activated_at','expired_at','token','is_used')
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('actor','event','object','message','trigger_time','send_time','is_read')
+
 ### right
 @admin.register(MailBell)
 class MailBellAdmin(admin.ModelAdmin):
@@ -72,4 +69,3 @@ class OrgExerAdmin(admin.ModelAdmin):
 class UserExerAdmin(admin.ModelAdmin):
     list_display = ('id','user','exer')
     list_filter = ('user','exer')
->>>>>>> master

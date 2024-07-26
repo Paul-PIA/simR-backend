@@ -1,13 +1,8 @@
-<<<<<<< HEAD
-from django.shortcuts import render,get_object_or_404
-from django.http import HttpResponse,Http404
-from django.template import loader
-from django.http import JsonResponse
-from .models import CustomUser
-=======
 # from django.shortcuts import render,get_object_or_404
 from django.db import models
+from django.utils.timezone import now
 from django.http import HttpResponse,Http404
+from django.core.exceptions import ObjectDoesNotExist as ODNE
 from rest_framework import viewsets,views
 from rest_framework.response import Response
 from rest_framework import permissions,status
@@ -29,27 +24,20 @@ from .filters import OrgConFilter,OrgExerFilter,UserExerFilter,ShareFilter
 from .permissions import IsPrincipalAndChief as IPAC,IsChief as IC,IsSelf as IS
 from .permissions import CanDo as CD, IsOtherChief as IOF
 # from django.template import loader
-# from .serializers import TestSerializer
+from .tasks import send_notification  #,add
 
->>>>>>> master
-
+#views
 def index(request):
     return HttpResponse("Here drops the principal homepage.")
-
-<<<<<<< HEAD
-def profile(request,id):
-    name = CustomUser.__str__(CustomUser.get_user(id))
-    return HttpResponse("Here drops the homepage of %s." % name)
-
-
-def get_user_emails(request):
-    emails = CustomUser.objects.values_list('email', flat=True)
-    return JsonResponse(list(emails), safe=False)
-
-=======
-# def profile(request,id):
-#     name = CustomUser.__str__(CustomUser.getter(id))
-#     return HttpResponse("Here drops the homepage of %s." % name)
+#small click
+# def trigger(request):
+#     for i in [0,1,2,3,4,5,6]:
+#         print(add.delay(i,i))
+#     return HttpResponse("Finished.")
+# def trigger_fidele(request):
+#     for i in [0,1,2,3,4,5,6]:
+#         add(i,i)
+#     return HttpResponse("Finished.")
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.select_related('org').all()
@@ -88,6 +76,45 @@ class ConViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [permissions.IsAuthenticated]
         return [per() for per in permission_classes]
+    def update(self, request, *args, **kwargs):
+        ### get receiver
+        instance = self.get_object()
+        org = instance.org.all()
+        right = OrgConRight.objects.prefetch_related('staff').filter(con=instance,org__in=org)
+        staff = right.values_list('staff',flat=True)
+        for user in staff:
+            print(user)
+        receiver = CustomUser.objects.select_related('org').prefetch_related(
+            models.Prefetch("con_staff",queryset=right,to_attr="_right")
+        )
+        for user in receiver:
+            print(user.__str__(),user._right)
+        ### update
+        response = super().update(request, *args, **kwargs)
+        trigger_time = now()
+        ### send notification
+        self.sender(request,response,trigger_time,receiver)
+        return response
+    def sender(self,request,response,trigger_time,receiver): # change orgs
+        if response.status_code == 200:
+            instance = self.get_object()
+            org_new = instance.org.all()
+            user_remain = receiver.filter(org__in=org_new).values_list('id',flat=True)
+            user_removed = receiver.exclude(org__in=org_new).values_list('id',flat=True)
+            message_remain = f"{request.user.username} has shaken up the organizations in the contract {instance.name}."
+            send_notification.delay(
+                receiver = user_remain,#list of ids
+                actor = request.user.id, # id
+                message = message_remain,event = 'U',object = 'T',
+                trigger_time = trigger_time
+            )
+            message_removed = f"Your organization has been removed from the contract {instance.name}."
+            send_notification.delay(
+                receiver = user_removed,
+                actor = request.user.id,
+                message = message_removed,event = 'D',object = 'T',
+                trigger_time = trigger_time
+            )
 class ExerViewSet(viewsets.ModelViewSet):
     queryset = Exercise.objects.select_related('con').prefetch_related('user_rights__user').all()
     serializer_class = ExerSerializer
@@ -107,6 +134,30 @@ class ExerViewSet(viewsets.ModelViewSet):
             return self.queryset
         else:
             return self.queryset.filter(user_rights__user=user)
+    def create(self, request, *args, **kwargs): 
+        response = super().create(request, *args, **kwargs)
+        trigger_time = now()
+        self.sender(request,response,trigger_time)
+        return response
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        trigger_time = now()
+        self.sender(request,response,trigger_time)
+        return response
+    def sender(self,request,response,trigger_time): # create notification for C,U
+        if response.status_code == 201:
+            message = f"{request.user.username} has created the exercise {instance.name}."
+        if response.status_code == 200:
+            message = f"{request.user.username} has updated the work time of the exercise {instance.name}."
+        instance = self.get_object()
+        rights = OrgConRight.objects.select_related('chief').filter(con=instance.con)
+        chiefs = [right.chief.id for right in rights]
+        send_notification.delay(
+            receiver = chiefs, #list of ids
+            actor = request.user.id, # id
+            message = message,event = 'C',object = 'E',
+            trigger_time = trigger_time
+        )
     
 class FileViewSet(viewsets.ModelViewSet):
     queryset = File.objects.select_related('uploader').select_related('con').select_related('exer').select_related('access').all()
@@ -196,6 +247,27 @@ class ShareViewSet(viewsets.ModelViewSet):
             return self.queryset
         else:
             return self.queryset.filter(models.Q(to_user=user)|models.Q(from_user=user))
+    def sender(self,request,response,trigger_time,staff_old):# share a file
+        if response.status_code == 201:
+            instance = self.get_object()
+            to_user = instance.to_user
+            con = instance.con
+            message_chief = f"{request.user.username} has shared the file {instance.file.name} in the Exercise {instance.exer.name} to {to_user.username} of Organization {to_user.org.name}."
+            message_to = f"{request.user.username} has shared the file {instance.file.name} in the Exercise {instance.exer.name} to you."
+            chief = OrgConRight.objects.select_related('chief').get(con=con,org=instance.user.org).chief
+            send_notification.delay(
+                receiver = [chief.id],#list of ids
+                actor = request.user.id, # id
+                message = message_chief,event = 'S',object = 'F',
+                trigger_time = trigger_time
+            )
+            send_notification.delay(
+                receiver = [to_user.id],#list of ids
+                actor = request.user.id, # id
+                message = message_to,event = 'S',object = 'F',
+                trigger_time = trigger_time
+            )
+
 class FileAccessViewSet(viewsets.ModelViewSet):
     queryset = FileAccess.objects.all()
     serializer_class = FileAccessSerializer
@@ -213,11 +285,18 @@ class OrgConRightViewSet(viewsets.ModelViewSet):
     filterset_class = OrgConFilter
     def create(self, request, *args, **kwargs):
         return Response({"detail":"Creating the right via API is not allowed."})
+    def update(self, request, *args, **kwargs):# change staff
+        staff_old = list(self.get_object().staff.all())
+        response = super().update(request, *args, **kwargs)
+        trigger_time=now()
+        print("update")
+        self.sender(request,response,trigger_time,staff_old)
+        return response
     def destroy(self, request, *args, **kwargs):
         return Response({"detail":"Deleting the right via API is not allowed."})
     def get_permissions(self):
-        if self.action in ['update','partial_update']:
-            permission_classes = [IPAC]
+        if self.action in ['update','partial_update']: # change staff
+            permission_classes = [IC]
         elif self.action in ['list','retrieve']:
             permission_classes = [permissions.IsAuthenticated]
         else:
@@ -229,6 +308,33 @@ class OrgConRightViewSet(viewsets.ModelViewSet):
             return self.queryset
         else:
             return self.queryset.filter(staff=user)
+    def sender(self,request,response,trigger_time,staff_old):# change staff
+        if response.status_code == 200:
+            instance = self.get_object()
+            staff_new = instance.staff.all()
+            staff_remain = []
+            staff_removed = []
+            for staff in staff_old:
+                if staff in staff_new:
+                    staff_remain.append(staff.id)
+                else:
+                    staff_removed.append(staff.id)
+            print(staff_remain,staff_removed)
+            message_remain = f"{request.user.username} has updated the team of {instance.org.name} in the contract {instance.con.name}."
+            message_removed = f"You have been removed from the team of {instance.org.name} in the contract {instance.con.name}."
+            send_notification.delay(
+                receiver = staff_remain,#list of ids
+                actor = request.user.id, # id
+                message = message_remain,event = 'U',object = 'T',
+                trigger_time = trigger_time
+            )
+            if len(staff_removed)>0:
+                send_notification.delay(
+                    receiver = staff_removed,#list of ids
+                    actor = request.user.id, # id
+                    message = message_removed,event = 'D',object = 'T',
+                    trigger_time = trigger_time
+                )
 class OrgExerRightViewSet(viewsets.ModelViewSet):
     queryset = OrgExerRight.objects.all()
     serializer_class = OrgExerRightSerializer
@@ -344,7 +450,6 @@ class PrintCommentView(views.APIView):
         serializer = PrintCommentSerializer(comments,many=True)
         return Response(serializer.data)
 
-
 # Certain evaluaters
 class SetUserStateView(views.APIView):
     permission_classes = [permissions.IsAdminUser]
@@ -358,8 +463,21 @@ class SetUserStateView(views.APIView):
         serializer = SetUserStateSerializer(instance=obj,data=request.data,partial=True,context={"request":request})
         if serializer.is_valid():
             serializer.save()
+            trigger_time = now()
+            self.sender(self,request,obj,trigger_time)
             return Response(serializer.data)
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+    def sender(self,request,obj,trigger_time):
+        if obj.is_staff:
+            _message = "You have been set to be the administer."
+        else:
+            _message = "You have been set not to be the administer."
+        send_notification.delay(
+            receiver = [obj.id],
+            actor = request.user.id,
+            message = _message,event = 'U',object = 'U',
+            trigger_time = trigger_time
+        )
 class SetFileStateView(views.APIView):
     permission_classes = [IC]
     def get_object(self,pk):
@@ -375,6 +493,36 @@ class SetFileStateView(views.APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+class DistributeAccountView(views.APIView):
+    permission_classes = [IPAC]
+    def get_object(self,pk):
+        try:
+            return Contract.objects.get(id=pk)
+        except Contract.DoesNotExist:
+            raise Http404
+    def patch(self,request,pk,format=None):
+        obj = self.get_object(pk)
+        self.check_object_permissions(request,obj)
+        serializer = DistributeAccountSerializer(instance=obj,data=request.data,partial=True,context={"request":request})
+        if serializer.is_valid():
+            serializer.save()
+            trigger_time=now()
+            self.sender(request,obj,trigger_time)
+            return Response(serializer.data)
+        return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+    def sender(self,request,obj,trigger_time):
+        _message = f"{request.user.username} has distributed the max number of accounts in your team in the contract {obj.name}."
+        rights = OrgConRight.objects.select_related('chief').filter(con=obj)
+        user = []
+        for right in rights:
+            if right.chief is not None:
+                user.append(right.chief.id)
+        send_notification.delay(
+            receiver = user,
+            actor = request.user.id,
+            message = _message,event = 'U',object = 'T',
+            trigger_time = trigger_time
+        )
 
 class RaiseBoycottView(views.APIView):
     permission_classes = [IOF]
@@ -405,53 +553,18 @@ class AssignCommentView(views.APIView):
         serializer = AssignCommentSerializer(instance=obj,data=request.data,partial=True,context={"request":request})
         if serializer.is_valid():
             serializer.save()
+            trigger_time = now()
+            self.sender(request,obj,trigger_time)
             return Response(serializer.data)
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
-class DistributeAccountView(views.APIView):
-    permission_classes = [IPAC]
-    def get_object(self,pk):
-        try:
-            return Contract.objects.get(id=pk)
-        except Contract.DoesNotExist:
-            raise Http404
-    def patch(self,request,pk,format=None):
-        obj = self.get_object(pk)
-        self.check_object_permissions(request,obj)
-        serializer = DistributeAccountSerializer(instance=obj,data=request.data,partial=True,context={"request":request})
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
-class SetChiefView(views.APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    def get_object(self,pk):
-        try:
-            return OrgConRight.objects.get(id=pk)
-        except OrgConRight.DoesNotExist:
-            raise Http404
-    def patch(self,request,pk,format=None):
-        token = request.query_params.get('token')
-        obj = self.get_object(pk)
-        user = request.user
-        if obj.org != user.org:
-            return Response({'error':'You\'re not in this organization.'},status=status.HTTP_403_FORBIDDEN)
-        try:
-            invitation = Invitation.objects.get(token=(token+str(pk)))
-            if invitation.is_used or invitation.is_expired():
-                return Response({'error':'Invitation token is used or expired.'},status=status.HTTP_400_BAD_REQUEST)
-            obj.chief = user
-            obj.save()
-            obj.staff.set([request.user,])
-            exers = obj.con.exers.all()
-            for exer in exers:
-                UserExerRight.objects.create(user=user,exer=exer)
-                chiefrightcopy(user,exer)
-            invitation.is_used = True
-            invitation.save()
-            return Response({'message':'You have participate in the contract.'},status=status.HTTP_200_OK)
-        except Invitation.DoesNotExist: 
-            return Response({'error':'Invalid invitation token.'},status=status.HTTP_404_NOT_FOUND)
-
+    def sender(self,request,obj,trigger_time):
+        _message = f"{request.user.username} has assigned you a new comment in the file {obj.file.name} to treat."
+        send_notification.delay(
+            receiver = obj.dealer.id,
+            actor = request.user.id,
+            message = _message,event = 'U',object = 'C',
+            trigger_time = trigger_time
+        )
 class TreatCommentView(views.APIView):
     permission_classes = [IC]
     def get_object(self,pk):
@@ -467,6 +580,52 @@ class TreatCommentView(views.APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+
+class SetChiefView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def get_object(self,pk):
+        try:
+            return OrgConRight.objects.select_related('con','org').get(id=pk)
+        except OrgConRight.DoesNotExist:
+            raise Http404
+    def patch(self,request,pk,format=None):
+        token = request.query_params.get('token')
+        obj = self.get_object(pk)
+        user = request.user
+        if obj.org != user.org:
+            return Response({'error':'You\'re not in this organization.'},status=status.HTTP_403_FORBIDDEN)
+        try:
+            invitation = Invitation.objects.get(token=(token+str(pk)))
+            if invitation.is_used or invitation.is_expired():
+                return Response({'error':'Invitation token is used or expired.'},status=status.HTTP_400_BAD_REQUEST)
+            obj.chief = user
+            obj.save()
+            obj.staff.set([request.user,])
+            exers = Exercise.objects.filter(con=obj.con)
+            for exer in exers:
+                UserExerRight.objects.create(user=user,exer=exer)
+                chiefrightcopy(user,exer)
+            invitation.is_used = True
+            invitation.save()
+            trigger_time=now()
+            self.sender(request,obj,trigger_time)
+            return Response({'message':'You have participated in the contract.'},status=status.HTTP_200_OK)
+        except Invitation.DoesNotExist: 
+            return Response({'error':'Invalid invitation token.'},status=status.HTTP_404_NOT_FOUND)
+    def sender(self,request,obj,trigger_time):
+        _message = f"{request.user.username} has registered to be the chief of {obj.org.name} in the contract {obj.con.name}."
+        rights = OrgConRight.objects.select_related('chief').filter(con=obj.con)
+        user = []
+        for right in rights:
+            if right.chief is not None:
+                user.append(right.chief.id)
+        send_notification.delay(
+            receiver = user,
+            actor = request.user.id,
+            message = _message,event = 'U',object = 'T',
+            trigger_time = trigger_time
+        )
+
 #Certain poster
 class InviteChiefView(views.APIView):
     permission_classes = [IPAC|permissions.IsAdminUser]
@@ -490,17 +649,9 @@ class InviteChiefView(views.APIView):
             if serializer.is_valid():
                 serializer.save()
                 right = OrgConRight.objects.get(con=obj,org=org) 
-                serializer.instance.send(right.id) # send email
+                serializer.instance.send(right) # send email
                 serializer.instance.token = serializer.instance.token + str(right.id) # enhence the quality of token
                 serializer.instance.save()
             else:
                 return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
         return Response("Invitation emails have been sent.",status=status.HTTP_200_OK)
-
-# class TestViewSet(viewsets.ModelViewSet):
-#     queryset = Contract.objects.all()
-#     serializer = TestSerializer
-#     permission_classes = [AllowAny]
-#     def create(self, request, *args, **kwargs):
-#         return super().create(request, *args, **kwargs)
->>>>>>> master

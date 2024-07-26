@@ -20,25 +20,21 @@ from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 
-<<<<<<< HEAD
-=======
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
-from data.routers import router
+from data import views
 
->>>>>>> master
 urlpatterns = [
     path("admin/", admin.site.urls),
     # path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/', include('allauth.urls')),
     path('', include('data.urls')),
-<<<<<<< HEAD
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-=======
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+
+    # path('trigger/',views.trigger),
+    # path('trigger_fidele/',views.trigger_fidele),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
->>>>>>> master

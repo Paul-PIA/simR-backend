@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-from django.urls import path
-from django.shortcuts import render
-from .views import get_user_emails
-from . import views
-=======
 from django.urls import path,include
 from django.shortcuts import render
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
@@ -12,27 +6,11 @@ from dj_rest_auth.views import PasswordResetView, PasswordResetConfirmView
 
 from . import views
 from .routers import router
->>>>>>> master
 
 app_name = "data"
 
 urlpatterns = [
     path("", views.index, name="index"),
-<<<<<<< HEAD
-    path("<int:id>/", views.profile, name="profile"),
-    path('user-emails/', get_user_emails, name='get_user_emails'),
-    #path("<int:id>/project/", views.proj, name="proj"),
-    #path("<int:id>/exercise/", views.exer, name="exer"),
-    #path("<int:id>/organization/", views.org, name="org"),
-    
-    #path("<int:id>/settings/", views.settings, name="settings"),
-    #path("<int:id>/chats/", views.chats, name="chats"),
-    #path("<int:id>/help/", views.help, name="help"),
-
-
-]
-
-=======
     # path("<int:id>/", views.profile, name="profile"),
     path('api/', include(router.urls)),
     #registration
@@ -48,15 +26,14 @@ urlpatterns = [
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 
     #special APIs
-    path('api/setuserstate/',views.SetUserStateView.as_view()),
-    path('api/setfilestate/',views.SetFileStateView.as_view()),
-    path('api/assigncomment/',views.AssignCommentView.as_view()),
-    path('api/treatcomment/',views.TreatCommentView.as_view()),
-    path('api/distributeaccount/',views.DistributeAccountView.as_view()),
-    path('api/setchief/',views.SetChiefView.as_view()),
-    path('api/raiseboycott/',views.RaiseBoycottView.as_view()),
+    path('api/setuserstate/<int:pk>/',views.SetUserStateView.as_view()),
+    path('api/setfilestate/<int:pk>/',views.SetFileStateView.as_view()),
+    path('api/assigncomment/<int:pk>/',views.AssignCommentView.as_view()),
+    path('api/treatcomment/<int:pk>/',views.TreatCommentView.as_view()),
+    path('api/distributeaccount/<int:pk>/',views.DistributeAccountView.as_view()),
+    path('api/setchief/<int:pk>/',views.SetChiefView.as_view()),
+    path('api/raiseboycott/<int:pk>/',views.RaiseBoycottView.as_view()),
 
-    path('api/invitechief/',views.InviteChiefView.as_view()),
+    path('api/invitechief/<int:pk>/',views.InviteChiefView.as_view()),
     #path('api/test/',views.TestView.as_view()),
 ]
->>>>>>> master

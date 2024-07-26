@@ -1,0 +1,24 @@
+### NOT IN USE
+
+
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13.2-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    container_name: rabbitmq
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+  
+  # celeryworker:
+  #   build: .
+  #   command: celery -A simR worker -l info
+  #   environment:
+  #     - CELERY_BROKER_URL = amqp://myuser:mypassword@rabbitmq:5672
+  #     - CELERY_RESULT_BACKEND = amqp://myuser:mypassword@rabbitmq:5672
+  #   depends_on:
+  #     - rabbitmq
