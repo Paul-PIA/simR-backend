@@ -4,36 +4,22 @@ databases:
     databaseName: simr_database_mnu7
     user: simr_database_mnu7_user
 
-
-
-
 services:
-
   - type: web
-
     plan: free
-
     name: simR
-
     runtime: python
-
     buildCommand: "./build.sh"
-
     startCommand: "python -m gunicorn simR.asgi:application -k uvicorn.workers.UvicornWorker"
 
     envVars:
-
-      - envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: simR-database
-          property: connection_string
-
+          property: connectionString  # Utilise la propriété correcte ici
 
       - key: SECRET_KEY
-
         generateValue: true
 
       - key: WEB_CONCURRENCY
-
         value: 4
