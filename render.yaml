@@ -1,8 +1,8 @@
 databases:
   - name: simR-database
     plan: free
-    databaseName: simr_database_65ep
-    user: simr_database_65ep_user
+    databaseName: simr_database_mnu7
+    user: simr_database_mnu7_user
 
 
 
