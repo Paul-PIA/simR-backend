@@ -415,9 +415,21 @@ class CommentSerializer(serializers.ModelSerializer):
 # interior serializers, can't be used directly
 class InvitationSerializer(serializers.ModelSerializer):
     inviter = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    message = serializers.CharField()
     class Meta:
         model = Invitation
         fields = '__all__'
+    def create(self, validated_data):
+        invitation = super().create(validated_data)
+        message = validated_data.get("message",None)
+        send_celery(
+            "New comment to file",
+            message,
+            None,
+            [invitation.email],
+            fail_silently=False,
+        )
+        return invitation
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification

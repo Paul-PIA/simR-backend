@@ -140,10 +140,11 @@ class Invitation(models.Model):
         return self.token
     def is_expired(self):
         return now() > self.expired_at
-    def send(self,right):#send invitation for right=right
+    def send(self,right,message):#send invitation for right=right
         name = right.con.name
-        message = f"Hello,\n{self.inviter.username} in {self.inviter.org} has sent you an invitation to participate in the contract {name}.\n"
-        message += f"Please click this link http://127.0.0.1:8000/setchief/{right.id}/?token={self.token} to sign in as a chief."
+        if message == "" or message == None:
+            message = f"Hello,\n{self.inviter.username} in {self.inviter.org} has sent you an invitation to participate in the contract {name}.\n"
+            message += f"Please click this link http://127.0.0.1:8000/setchief/{right.id}/?token={self.token} to sign in as a chief."
         send_celery.delay(
             f"New invitation to the contract {name}",
             message,

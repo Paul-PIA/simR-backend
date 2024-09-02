@@ -470,6 +470,19 @@ class UserExerRightViewSet(viewsets.ModelViewSet):
                 trigger_time = trigger_time
             )
 
+#
+class InvitationViewSet(viewsets.ModelViewSet):
+    queryset = Invitation.objects.all()
+    serializer_class = serializers.InvitationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    def update(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Updating access to file via API is not allowed."})
+    def destroy(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Deleting mail bell via API is not allowed."})
+    def get_queryset(self):
+        user = self.request.user
+        return self.queryset.filter(inviter=user)
+
 # Certain getters, abandonned
 def str_to_bool(s):
     if s.lower() in ['1','True','true','T','t','Yes','yes','Y','y']:
