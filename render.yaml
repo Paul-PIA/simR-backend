@@ -13,9 +13,10 @@ services:
     startCommand: "python -m gunicorn simR.asgi:application -k uvicorn.workers.UvicornWorker"
     envVars:
       - key: DATABASE_URL
-        fromDatabase: 
-          name: simr_database
-          property: connectionString
+        fromDatabase:
+          name: simR-database
+          property: connectionString # Utilise la propriété correcte ici
+
       - key: SECRET_KEY
         generateValue: true
       - key: WEB_CONCURRENCY
@@ -25,7 +26,7 @@ services:
           name: celery-redis
           type: redis
           property: connectionString
-  
+
   - type: worker # need to pay
     plan: free
     name: celery-worker
@@ -39,7 +40,7 @@ services:
           name: celery-redis
           type: redis
           property: connectionString
-  
+
   # - type: web
   #   plan: free
   #   name: app
@@ -53,7 +54,7 @@ services:
   #         name: celery-redis
   #         type: redis
   #         property: connectionString
-  
+
   # - type: web
   #   name: flower
   #   plan: free
@@ -67,7 +68,7 @@ services:
   #         type: redis
   #         name: celery-redis
   #         property: connectionString
-  
+
   - type: redis
     name: celery-redis
     plan: free
