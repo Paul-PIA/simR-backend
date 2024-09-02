@@ -1,10 +1,11 @@
 from django_filters import rest_framework as filters
 
-from .models import CustomUser,Organization,Contract,Exercise,File,Comment,Invitation
+from .models import CustomUser,Organization,Contract,Exercise,File,Comment,Invitation,Notification
 from .models import FileAccess,MailBell,Share
 from .models import OrgConRight,OrgExerRight,UserExerRight
 
-#exact,iexact,contains,icontains,in,gt,gte,lt,lte,startswith,istartswith,endswith,iendswith
+#searchable models
+#All that can be set: exact,iexact,contains,icontains,in,gt,gte,lt,lte,startswith,istartswith,endswith,iendswith
 class UserFilter(filters.FilterSet):
     class Meta:
         model = CustomUser
@@ -15,7 +16,6 @@ class UserFilter(filters.FilterSet):
             'last_name':['exact','icontains'],
             'org':['exact','in'],
         }
-
 class OrgFilter(filters.FilterSet):
     class Meta:
         model = Organization
@@ -24,7 +24,6 @@ class OrgFilter(filters.FilterSet):
             'name':['exact','icontains'],
             'cons__name':['exact','icontains'],
         }
-
 class ConFilter(filters.FilterSet):
     class Meta:
         model = Contract
@@ -33,7 +32,6 @@ class ConFilter(filters.FilterSet):
             'name':['exact','icontains'],
             'org__name':['exact','icontains'],
         }
-
 class ExerFilter(filters.FilterSet):
     class Meta:
         model = Exercise
@@ -55,7 +53,6 @@ class FileFilter(filters.FilterSet):
             'exer':['exact','in'],
             'is_template':['exact'],
         }
-
 class CommentFilter(filters.FilterSet):
     class Meta:
         model = Comment
@@ -67,6 +64,16 @@ class CommentFilter(filters.FilterSet):
             'is_treated':['exact',],
         }
 
+class NotificationFilter(filters.FilterSet):
+    class Meta:
+        model = Notification
+        fields = {
+            'id':['exact','lt','gt'],
+            'actor':['exact','in'],
+            'trigger_time':['exact','in'],
+            'object':['exact','in'],
+            'event':['exact','in'],
+        }
 
 class OrgConFilter(filters.FilterSet):
     class Meta:
@@ -75,7 +82,7 @@ class OrgConFilter(filters.FilterSet):
             'org':['exact',],
             'con':['exact',],
         }
-class OrgExerFilter(filters.FilterSet):# no use
+class OrgExerFilter(filters.FilterSet):#Useless
     class Meta:
         model = OrgExerRight
         fields = {
@@ -98,5 +105,3 @@ class ShareFilter(filters.FilterSet):
             'to_user':['exact',],
             'file':['exact',],
         }
-
-

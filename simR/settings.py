@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-m121fuicgj5gd-4a1g@6jkitxbc%inpycqi8*8n*s#%^s6s$!2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1:8000', 'simr-backend.onrender.com']
+ALLOWED_HOSTS = ['127.0.0.1', 'simr-backend.onrender.com']
 
 
 # Application definition
@@ -155,22 +155,22 @@ WSGI_APPLICATION = 'simR.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         "NAME": "dj_test",
-#         "USER": "postgres",
-#         "PASSWORD": "1234",
-#         "HOST": "localhost",
-#         "PORT": "5432",
-#     }
-# }
 DATABASES = {
-    'default': dj_database_url.config(
-        default='postgresql://simr_database_65ep_user:EcJhydOWlT72V9PGXEvZjJfCGWYM8oD0@dpg-cqfrivt6l47c73bkggd0-a/simr_database_65ep',
-        conn_max_age=600
-    )  
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        "NAME": "dj_test",
+        "USER": "postgres",
+        "PASSWORD": "1234",
+        "HOST": "localhost",
+        "PORT": "5432",
+    }
 }
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default='postgresql://user:t8IqN8PQQASla4eJrINTqSfRTJc9Ayni@dpg-cqllohrv2p9s73b2spg0-a/simr_database_pn3r',
+#         conn_max_age=600
+#     )  
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators

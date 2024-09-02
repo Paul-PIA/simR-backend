@@ -3,14 +3,14 @@ from django.core.mail import send_mail
 from celery import shared_task
 
 @shared_task
-def add(x,y):
+def add(x,y):#test
     print("sending...")
     time.sleep(10)
     print("successfully.")
     return x+y
 
 @shared_task
-def send_celery(_subject,_message,_from_email,_recipient_list,_fail_silently):
+def send_celery(_subject,_message,_from_email,_recipient_list,_fail_silently): # send email
     send_mail(
         subject=_subject,
         message=_message,
@@ -20,7 +20,7 @@ def send_celery(_subject,_message,_from_email,_recipient_list,_fail_silently):
     )
 
 @shared_task
-def send_notification(receiver,actor,message,event,object,trigger_time):
+def send_notification(receiver,actor,message,event,object,trigger_time): # send email
     from .models import Notification,CustomUser
     notification = Notification.objects.create(
         actor = CustomUser.objects.get(id=actor),

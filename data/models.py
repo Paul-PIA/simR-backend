@@ -49,18 +49,20 @@ class Contract(models.Model):  ### as con in code
     def __str__(self):#to string
         return self.name
 
+EXER_TYPE = (
+        ('1', 'Type1'),
+        ('G', 'Goal'),
+        ('R', 'Review ex-post'),
+        ('P', 'Plan'),
+        ('A', 'Audit'),
+    )
 class Exercise(models.Model):  ### as exer in code
     #id = models.IntegerField(primary_key=True)
     name = models.CharField()
     date_i = models.DateField(verbose_name="start date")
     date_f = models.DateField(verbose_name="end date")
     period = models.DurationField(verbose_name="duration")
-    EXER_TYPE = (
-        ('1', 'Type1'),
-        ('2', 'Type2'),
-        ('3', 'Type3'),
-        ('4', 'Type4'),
-    )
+    
     type = models.CharField(max_length=1,choices=EXER_TYPE,default='1')
     ### relation
     con = models.ForeignKey("Contract",on_delete=models.CASCADE,related_name="exers",verbose_name="contract",db_index=True)

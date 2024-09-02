@@ -1,3 +1,5 @@
+# handle the operations on db
+# __init__,validate,CRUD
 import uuid
 
 from rest_framework import serializers
@@ -7,11 +9,11 @@ from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist as ODNE
 from django.core.mail import send_mail
 
-from .models import CustomUser,Organization,Contract,Exercise,File,Comment,Invitation
+from .models import CustomUser,Organization,Contract,Exercise,File,Comment,Invitation,Notification
 from .models import FileAccess,MailBell,Share
 from .models import OrgConRight,OrgExerRight,UserExerRight
 from .permissions import get_chief
-from .tasks import send_celery
+from .tasks import send_celery,send_notification
 
 class ShareSerializer(serializers.ModelSerializer):
     from_user = serializers.HiddenField(default=serializers.CurrentUserDefault())
@@ -21,7 +23,7 @@ class ShareSerializer(serializers.ModelSerializer):
         read_only_fields = ['id','from_user',]
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
-        if self.instance is not None:
+        if self.instance is not None: # modification forbidden
             self.fields['to_user'].read_only =True
             self.fields['date'].read_only =True
             self.fields['file'].read_only =True
@@ -55,10 +57,10 @@ class ShareSerializer(serializers.ModelSerializer):
         file = validated_data['file']
         to_user = validated_data['to_user']
         access = FileAccess.objects.get(file=file)
-        access.user.add(to_user)
+        access.user.add(to_user) # add right to access the file
         if validated_data.get('between_org',None):
-            access.org.add(to_user.org)
-        if to_user.mailbell.newfile:
+            access.org.add(to_user.org) # add right to access the file
+        if to_user.mailbell.newfile: # send email
             send_celery(
                 "New file shared to you",
                 f"Hello, {to_user}\n {validated_data['from_user'].username} has shared the file {file.name} with you, with message as:\n {validated_data['message']}",
@@ -83,7 +85,7 @@ class FileAccessSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['file','user','org']
 
-def chiefrightcopy(user:CustomUser,exer:Exercise):
+def chiefrightcopy(user:CustomUser,exer:Exercise,actor:CustomUser): # to copy the the exer_right from org to its chief
     right = OrgExerRight.objects.get(exer=exer,org__users=user)
     chiefright = UserExerRight.objects.get(exer=exer,user=user)
     chiefright.role = right.role
@@ -95,6 +97,14 @@ def chiefrightcopy(user:CustomUser,exer:Exercise):
     chiefright.download = right.download
     chiefright.share = right.share
     chiefright.save()
+    trigger_time = timezone.now()
+    message = f"Your right in exercise {exer.name} is reset."
+    send_notification.delay(
+        receiver = [user.id],#list of ids
+        actor = actor.id, # id
+        message = message,event = 'U',object = 'R',
+        trigger_time = trigger_time
+    )
 
 class OrgConRightSerializer(serializers.ModelSerializer):
     class Meta:
@@ -104,7 +114,7 @@ class OrgConRightSerializer(serializers.ModelSerializer):
     def validate_staff(self,value):
         if len(value)>self.instance.nb_access:
             raise serializers.ValidationError("List of staff is too long.")
-        if self.instance.chief not in value:#chief is staff
+        if self.instance.chief not in value: # chief is staff
             raise serializers.ValidationError("Chief isn't in the staff.")
         org = self.instance.org
         ids = [user.id for user in value]
@@ -147,6 +157,7 @@ class OrgConRightSerializer(serializers.ModelSerializer):
         right = super().update(instance, validated_data)
         return right
 class OrgExerRightSerializer(serializers.ModelSerializer):
+    #set by principal chief
     class Meta:
         model = OrgExerRight
         fields = '__all__'
@@ -155,11 +166,13 @@ class OrgExerRightSerializer(serializers.ModelSerializer):
         right = super().update(instance, validated_data)
         try:
             chief = get_chief(right)
-            chiefrightcopy(chief,instance.exer)
+            actor = self.context['request'].user
+            chiefrightcopy(chief,instance.exer,actor) # copy the right
         except CustomUser.DoesNotExist:
             pass
         return right
 class UserExerRightSerializer(serializers.ModelSerializer):
+    # set by each chief
     class Meta:
         model = UserExerRight
         fields = '__all__'
@@ -170,7 +183,6 @@ class UserExerRightSerializer(serializers.ModelSerializer):
             if attrs.get(key) and (not getattr(right,key)):
                 raise serializers.ValidationError(f"The right {key} for your organization isn't accessible in this exercise.")
         return super().validate(attrs)
-
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -185,14 +197,14 @@ class UserSerializer(serializers.ModelSerializer):
     def validate(self, attrs):#update org
         org = attrs.get('org',None)
         org_0 = self.instance.org
-        if org_0 and org is not None:
+        if org_0 and org is not None: # can't be modified once set
             raise serializers.ValidationError("The organization can't be modified.")
-        if not org_0 and org is None:
+        if not org_0 and org is None: # necessary to set it if it's null 
             raise serializers.ValidationError("The organization is neccessary.")
         return super().validate(attrs)
     def update(self, instance, validated_data):
         user = super().update(instance, validated_data)
-        try:
+        try: # automatically create the mailbell
             mb = instance.mailbell
         except ODNE:
             MailBell.objects.create(user=instance)
@@ -203,7 +215,6 @@ class OrgSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id']
 class ConSerializer(serializers.ModelSerializer):
-    # org_detail = OrgSerializer(source="org",many=True,read_only=True)
     org = PKRF(queryset=Organization.objects.all(),many=True)
     class Meta:
         model = Contract
@@ -218,9 +229,9 @@ class ConSerializer(serializers.ModelSerializer):
         if self.instance is not None: #update
             nb_org = self.instance.nb_org
             orgs_new = attrs.get('org',None)
-            if orgs_new is None:
+            if orgs_new is None: # org lists required
                 raise serializers.ValidationError("List org is always required.")
-            if len(orgs_new) > nb_org: #refuse too many orgs
+            if len(orgs_new) > nb_org: # refuse too many orgs
                 raise serializers.ValidationError("List org is too long.")
             org = OrgConRight.objects.select_related('org').get(con=self.instance,is_principal=True).org
             if org not in orgs_new:
@@ -240,7 +251,7 @@ class ConSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         contract = super().create(validated_data)
         org = contract.org.first()
-        right = OrgConRight.objects.create(
+        right = OrgConRight.objects.create( # create the right
             org=org,con=contract,is_principal=True,nb_access=1,
         )
         return contract
@@ -291,7 +302,7 @@ class ExerSerializer(serializers.ModelSerializer):
         contract = validated_data['con']
         orgs = contract.org.all()
         rights = OrgConRight.objects.select_related('org').prefetch_related('staff').filter(con=contract) # simplify the query
-        for _org in orgs:
+        for _org in orgs: # create rights for orgs
             if _org == org:
                 OrgExerRight.objects.create(
                     org=_org,exer=exercise,role='A',
@@ -301,7 +312,7 @@ class ExerSerializer(serializers.ModelSerializer):
             else:
                 OrgExerRight.objects.create(org=_org,exer=exercise)
             users = rights.get(org=_org).staff.all()
-            for _user in users:
+            for _user in users: # create rights for users
                 if _user == user:
                     UserExerRight.objects.create(
                         user=_user,exer=exercise,role='A',
@@ -351,6 +362,7 @@ class FileSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = self.context['request'].user
         file = super().create(validated_data)
+        # create and distribute access
         access = FileAccess.objects.create(file=file)
         access.user.add(user)
         access.org.add(user.org)
@@ -387,10 +399,10 @@ class CommentSerializer(serializers.ModelSerializer):
                 if value is None:
                     validated_data[key] = getattr(parent,key)
         file = validated_data['file']
-        file.is_commented = True
+        file.is_commented = True # turn on the file
         file.save()
         chief = get_chief(file)
-        if chief.mailbell.newcomment:
+        if chief.mailbell.newcomment: # send email
             send_celery(
                 "New comment to file",
                 f"Hello, {chief.username}\n {self.context['request'].user.username} has commented to the file {file.name}, with content as:\n {validated_data['text']}",
@@ -400,12 +412,16 @@ class CommentSerializer(serializers.ModelSerializer):
             )
         return comment
 
+# interior serializers, can't be used directly
 class InvitationSerializer(serializers.ModelSerializer):
     inviter = serializers.HiddenField(default=serializers.CurrentUserDefault())
     class Meta:
         model = Invitation
         fields = '__all__'
-        read_only_fields = ['id','activated_at','expired_at','token','is_used']
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
 
 # Certain getters, perhaps abandonned
 class SpaceShareSerializer(serializers.ModelSerializer):
@@ -442,22 +458,22 @@ class DistributeAccountSerializer(serializers.ModelSerializer):
         fields = ['id','nb_access','distribution']
         read_only_fields = ['id',]
     def validate(self, attrs):
-        dis = attrs.get('distribution',None)
-        if dis is not None:
+        dis = attrs.get('distribution',None) # a distribution in json format
+        if dis is not None: # set new distribution
             orgs = self.instance.org.all()
             rights = OrgConRight.objects.select_related('org').prefetch_related('staff').filter(con=self.instance) # simplify the query
-            for org in orgs:
-                new_number = dis.get(org.name,None)
-                if new_number is not None and isinstance(new_number,int):
+            for org in orgs: # check every org
+                new_number = dis.get(org.name,None) # get distribution
+                if new_number is not None and isinstance(new_number,int): # if new distribution is normal
                     old_number = rights.get(org=org).staff.count()
                     if new_number < old_number:
                         raise serializers.ValidationError("The new distribution can't be less than the staff registered.")
                 elif new_number is not None:
                     raise serializers.ValidationError("The new distribution contains non-number.")
-            s = sum(dis.values())
-        else:
+            s = sum(dis.values()) # count the amount of accounts
+        else: # no new distribution
             s = 0
-        if attrs.get('nb_access',None):
+        if attrs.get('nb_access',None): # set amount in total
             nb_access = attrs['nb_access']
             if not isinstance(nb_access,int):
                 raise serializers.ValidationError("The new maximum isn't a number.")
@@ -468,7 +484,7 @@ class DistributeAccountSerializer(serializers.ModelSerializer):
         return super().validate(attrs)
     def update(self, instance, validated_data):
         dis = validated_data.get('distribution',None)
-        if dis is not None:
+        if dis is not None: # when redo the distribution
             orgs = self.instance.org.all()
             rights = OrgConRight.objects.select_related('org').filter(con=self.instance) # simplify the query
             for org in orgs:
@@ -480,6 +496,7 @@ class DistributeAccountSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 class AssignCommentSerializer(serializers.ModelSerializer):
+    # to assign a comment to a member to deal with
     class Meta:
         model = Comment
         fields = ['id','dealer']
@@ -495,7 +512,7 @@ class AssignCommentSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         assign = super().update(instance, validated_data)
         if instance.dealer.mailbell.newmessage:
-            send_celery(
+            send_celery( # send email
                 "New comment to deal with",
                 f"Hello, {instance.dealer.username}\n {user.username} has assigned you a new comment in the file {instance.file.name} to treat, with content as:\n {instance.text}",
                 None,
@@ -504,18 +521,19 @@ class AssignCommentSerializer(serializers.ModelSerializer):
             )
         return assign
 class TreatCommentSerializer(serializers.ModelSerializer):
+    # set comments to be treated in one 
     comments = PKRF(queryset=Comment.objects.all(),many=True)
     class Meta:
         model = File
         fields = ['id','comments']
         read_only_fields = ['id']
-    def validate(self, attrs):
+    def validate(self, attrs): # exclude the exterior comments
         list = self.instance.comments.all()
         for comment in attrs.get('comments',[]):
             if not comment in list:
                 raise serializers.ValidationError("There are comments not to the file.")
         return super().validate(attrs)
-    def update(self, instance, validated_data):
+    def update(self, instance, validated_data): # treat them
         comments = validated_data['comments'] 
         instance.is_commented = False
         list = instance.comments.all(is_treated=False)
@@ -528,6 +546,7 @@ class TreatCommentSerializer(serializers.ModelSerializer):
         instance.save()
         return super().update(instance, validated_data)
 
+# à installer, not used
 class RaiseBoycottSerializer(serializers.ModelSerializer):
     class Meta:
         model = File

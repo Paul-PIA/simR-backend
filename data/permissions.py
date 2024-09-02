@@ -1,3 +1,4 @@
+# permissions of APIs
 from rest_framework import permissions
 
 from .models import CustomUser,Organization,Contract,Exercise,File,Comment
@@ -12,7 +13,7 @@ class IsPrincipalAndChief(permissions.BasePermission):
             chief = OrgConRight.objects.select_related('chief').get(con=obj,is_principal=True).chief
         return request.user == chief
 
-def get_chief(obj):
+def get_chief(obj): # generally "find" the chief of the obj
     obj_type_name = type(obj).__name__
     chief = None
     right = OrgConRight.objects.select_related('chief').all()
@@ -64,7 +65,7 @@ class IsSelf(permissions.BasePermission):
             return right.exists()
         return super().has_permission(request, view)
     
-class CanDo(permissions.BasePermission):#Examine the right
+class CanDo(permissions.BasePermission):#Examine the rights
     def has_object_permission(self, request, view, obj):
         obj_type_name = type(obj).__name__
         if obj_type_name == 'File':
