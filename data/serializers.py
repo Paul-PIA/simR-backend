@@ -414,37 +414,38 @@ class CommentSerializer(serializers.ModelSerializer):
 
 # interior serializers, can't be used directly
 class InvitationSerializer(serializers.ModelSerializer):
-    inviter = serializers.HiddenField(default=serializers.CurrentUserDefault())
     message = serializers.CharField()
     subject = serializers.CharField()
     class Meta:
         model = Invitation
-        fields = '__all__'
-    def validate_email(self,value):
-        try:
-            CustomUser.objects.get(email=value)
-            return value
-        except Contract.DoesNotExist:
-            raise serializers.ValidationError("The email does not exist.")
-    def validate(self, attrs):
-        message = attrs.get("message",None)
-        subject = attrs.get("subject",None)
-        if (message is not None) and (subject is not None):
-            return super().validate(attrs)
-        else:
-            raise serializers.ValidationError("The subject and message are both required.")
-    def create(self, validated_data):
-        invitation = super().create(validated_data)
-        message = validated_data.get("message",None)
-        subject = validated_data.get("subject",None)
-        send_celery(
-            subject,
-            message,
-            None,
-            [invitation.email],
-            fail_silently=False,
-        )
-        return invitation
+    #     fields = '__all__'
+    # def validate_email(self,value):
+    #     try:
+    #         CustomUser.objects.get(email=value)
+    #         return value
+    #     except Contract.DoesNotExist:
+    #         raise serializers.ValidationError("The email does not exist.")
+    # def validate(self, attrs):
+    #     message = attrs.get("message",None)
+    #     subject = attrs.get("subject",None)
+    #     if (message is not None) and (subject is not None):
+    #         return super().validate(attrs)
+    #     else:
+    #         raise serializers.ValidationError("The subject and message are both required.")
+    # def create(self, validated_data):
+    #     invitation = super().create(validated_data)
+    #     message = validated_data.get("message",None)
+    #     subject = validated_data.get("subject",None)
+    #     send_celery.delay(
+    #         subject,
+    #         message,
+    #         None,
+    #         [invitation.email],
+    #         fail_silently=False,
+    #     )
+    #     invitation.inviter=CustomUser.objects.get(email=invitation.email)
+    #     invitation.save()
+    #     return invitation
 
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:

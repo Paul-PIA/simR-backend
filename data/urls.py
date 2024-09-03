@@ -19,9 +19,12 @@ urlpatterns = [
     path('api/treatcomment/<int:pk>/',views.TreatCommentView.as_view()),
     path('api/distributeaccount/<int:pk>/',views.DistributeAccountView.as_view()),
     path('api/setchief/<int:pk>/',views.SetChiefView.as_view()),
+    path('api/forgotpassword/',views.ForgotPasswordView.as_view()),
+
     path('api/raiseboycott/<int:pk>/',views.RaiseBoycottView.as_view()),
 
     path('api/invitechief/<int:pk>/',views.InviteChiefView.as_view()),
+    path('api/resetpasswordconfirm/',views.ResetPasswordConfirmView.as_view()),
     #path('api/test/',views.TestView.as_view()),
 
 

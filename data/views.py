@@ -6,6 +6,10 @@ from django.core.exceptions import ObjectDoesNotExist as ODNE
 from rest_framework import viewsets,views
 from rest_framework.response import Response
 from rest_framework import permissions,status
+from allauth.account.forms import ResetPasswordForm
+from django.utils.encoding import force_text
+from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth.tokens import default_token_generator
 
 from .models import CustomUser,Organization,Contract,Exercise,File,Comment,Invitation,Notification
 from .models import FileAccess,MailBell,Share
@@ -470,18 +474,18 @@ class UserExerRightViewSet(viewsets.ModelViewSet):
                 trigger_time = trigger_time
             )
 
-#
-class InvitationViewSet(viewsets.ModelViewSet):
-    queryset = Invitation.objects.all()
-    serializer_class = serializers.InvitationSerializer
-    permission_classes = [permissions.AllowAny]
-    def update(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Updating access to file via API is not allowed."})
-    def destroy(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Deleting mail bell via API is not allowed."})
-    def get_queryset(self):
-        user = self.request.user
-        return self.queryset.filter(inviter=user)
+# Don't use this
+# class InvitationViewSet(viewsets.ModelViewSet):
+#     queryset = Invitation.objects.all()
+#     serializer_class = serializers.InvitationSerializer
+#     permission_classes = [permissions.AllowAny]
+#     def update(self, request, *args, **kwargs): # abandonned
+#         return Response({"detail":"Updating access to file via API is not allowed."})
+#     def destroy(self, request, *args, **kwargs): # abandonned
+#         return Response({"detail":"Deleting mail bell via API is not allowed."})
+#     def get_queryset(self):
+#         user = self.request.user
+#         return self.queryset.filter(inviter=user)
 
 # Certain getters, abandonned
 def str_to_bool(s):
@@ -754,6 +758,38 @@ class SetChiefView(views.APIView):
             trigger_time = trigger_time
         )
 
+class ResetPasswordConfirmView(views.APIView):
+    def post(self,request):
+        uid = request.data.get('uid',None)
+        token = request.data.get('token',None)
+        pwd = request.data.get('new_password',None)
+        try:
+            id = force_text(urlsafe_base64_decode(uid))
+            user = CustomUser.objects.get(id=id)
+        except (TypeError,ValueError,OverflowError,CustomUser.DoesNotExist):
+            return Response({'error':'Invalid request.'},status=status.HTTP_400_BAD_REQUEST)
+        if default_token_generator(user,token):
+            if pwd != request.data.get('repeat_new_password',None):
+                return Response({'error':'The new passwords don\'t match.'},status=status.HTTP_400_BAD_REQUEST)
+            else:
+                user.set_password(pwd)
+                user.save()
+                trigger_time=now()
+                self.sender(request,user,trigger_time)
+                return Response({'message':'You have reset your password.'},status=status.HTTP_200_OK)
+        else:
+            return Response({'error':'Invalid token or uid.'},status=status.HTTP_400_BAD_REQUEST)        
+    def sender(self,request,obj,trigger_time):
+        _message = f"You have reset your account password."
+        user = []
+        user.append(obj.id)
+        send_notification.delay(
+            receiver = user,
+            actor = obj.id,
+            message = _message, event = 'U',object = 'U',
+            trigger_time = trigger_time
+        )
+
 #not used
 class RaiseBoycottView(views.APIView):
     permission_classes = [IOF]
@@ -800,3 +836,12 @@ class InviteChiefView(views.APIView):
             else:
                 return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
         return Response("Invitation emails have been sent.",status=status.HTTP_200_OK)
+    
+class ForgotPasswordView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+    def post(self,request):
+        form = ResetPasswordForm(data=request.data)
+        if form.is_valid():
+            form.save(request=request)
+            return Response({'status':'ok'},status=status.HTTP_200_OK)
+        return Response(form.errors,status=status.HTTP_400_BAD_REQUEST)
