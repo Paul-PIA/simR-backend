@@ -474,7 +474,7 @@ class UserExerRightViewSet(viewsets.ModelViewSet):
 class InvitationViewSet(viewsets.ModelViewSet):
     queryset = Invitation.objects.all()
     serializer_class = serializers.InvitationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     def update(self, request, *args, **kwargs): # abandonned
         return Response({"detail":"Updating access to file via API is not allowed."})
     def destroy(self, request, *args, **kwargs): # abandonned
