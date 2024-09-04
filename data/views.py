@@ -3,13 +3,18 @@ from django.db import models
 from django.utils.timezone import now
 from django.http import HttpResponse,Http404
 from django.core.exceptions import ObjectDoesNotExist as ODNE
+
 from rest_framework import viewsets,views
 from rest_framework.response import Response
 from rest_framework import permissions,status
+
 from allauth.account.forms import ResetPasswordForm
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
+
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
 
 from .models import CustomUser,Organization,Contract,Exercise,File,Comment,Invitation,Notification
 from .models import FileAccess,MailBell,Share
@@ -568,6 +573,31 @@ class PrintCommentView(views.APIView):
 # LOCK it in the real server, to set the first administer
 class AdamView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
+    @extend_schema(
+        operation_id="set_superuser",
+        description="Set the first superuser",
+        parameters=[
+            OpenApiParameter(
+                name='Authorization',
+                description='JWT token',
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER
+            )
+        ],
+        responses={
+            200: OpenApiTypes.OBJECT(
+                properties={
+                    'message': OpenApiTypes.STR
+                }
+            ),
+            400: OpenApiTypes.OBJECT(
+                properties={
+                    'error': OpenApiTypes.STR
+                }
+            )
+        }
+    )
     def get(self, request, *args, **kwargs):
         user=request.user
         if len(list(CustomUser.objects.all()))==1 and not (user.is_superuser and user.is_staff):
@@ -576,12 +606,43 @@ class AdamView(views.APIView):
             user.save()
             return Response({"message":f"Hello, Adam."},status=status.HTTP_200_OK)
         else:
-            return Response({"message":f"This API is sealed. Go to ask the superuser for your permission."},status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
+            return Response({"message":f"This API is sealed. Go to ask the superuser for your permission."},status=status.HTTP_400_BAD_REQUEST)
 
 # Certain evaluaters
 class SetUserStateView(views.APIView):
     permission_classes = [permissions.IsAdminUser]
+    @extend_schema(
+        operation_id="set_user_state",
+        description="Set a user's state in the system",
+        parameters=[
+            OpenApiParameter(name='Authorization',description='JWT token',required=True,type=OpenApiTypes.STR,location=OpenApiParameter.HEADER)
+        ],
+        request={
+            'application/json': OpenApiTypes.OBJECT(
+                properties={
+                    'is_active':OpenApiTypes.BOOL,'is_staff':OpenApiTypes.BOOL,'is_superuser':OpenApiTypes.BOOL
+                },
+                required=[]
+            )
+        },
+        responses={
+            200: OpenApiTypes.OBJECT(
+                properties={
+                    'message': OpenApiTypes.STR,
+                    'data': OpenApiTypes.OBJECT(
+                        properties={
+                            'is_active':OpenApiTypes.BOOL,'is_staff':OpenApiTypes.BOOL,'is_superuser':OpenApiTypes.BOOL
+                        }
+                    )
+                }
+            ),
+            400: OpenApiTypes.OBJECT(
+                properties={
+                    'error': OpenApiTypes.STR
+                }
+            )
+        }
+    )
     def get_object(self,pk):
         try:
             return CustomUser.objects.get(id=pk)
@@ -764,7 +825,7 @@ class ResetPasswordConfirmView(views.APIView):
         token = request.data.get('token',None)
         pwd = request.data.get('new_password',None)
         try:
-            id = force_text(urlsafe_base64_decode(uid))
+            id = force_str(urlsafe_base64_decode(uid))
             user = CustomUser.objects.get(id=id)
         except (TypeError,ValueError,OverflowError,CustomUser.DoesNotExist):
             return Response({'error':'Invalid request.'},status=status.HTTP_400_BAD_REQUEST)

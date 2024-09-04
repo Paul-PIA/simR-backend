@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'rest_framework',# bridge to API
     'rest_framework.authtoken',# bridge to API
     'drf_spectacular',# docs of API
+    'drf_yasg',# docs of API
 
     "corsheaders",# CORS protector
     
