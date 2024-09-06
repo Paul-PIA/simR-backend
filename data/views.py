@@ -12,9 +12,11 @@ from allauth.account.forms import ResetPasswordForm
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.http import JsonResponse
 
-# from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
-# from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
 
 from .models import CustomUser,Organization,Contract,Exercise,File,Comment,Invitation,Notification
 from .models import FileAccess,MailBell,Share
@@ -44,6 +46,11 @@ def trigger_fidele(request):
     for i in [0,1,2,3,4,5,6]:
         add(i,i)
     return HttpResponse("Finished.")
+#set CSRF cookie
+@ensure_csrf_cookie
+def set_csrf_token(request):
+    return JsonResponse({'detail': 'CSRF cookie set'})
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.select_related('org').all()
@@ -170,6 +177,22 @@ class FileViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.FileSerializer
     filterset_class = filters.FileFilter
     ordering_fields = ["id","last_update",]
+    def get_permissions(self):
+        if self.action in ['update','partial_update','destroy']:
+            permission_classes = [CD]
+        elif self.action in ['create']:
+            permission_classes = [IS]
+        elif self.action in ['list','retrieve']:
+            permission_classes = [permissions.IsAuthenticated]
+        else:
+            permission_classes = [permissions.IsAdminUser]
+        return [per() for per in permission_classes]
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return self.queryset
+        else:
+            return self.queryset.filter(access__user=user)
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
         trigger_time = now()
@@ -189,22 +212,7 @@ class FileViewSet(viewsets.ModelViewSet):
         trigger_time = now()
         self.sender(request,response,trigger_time,name=name)
         return response
-    def get_permissions(self):
-        if self.action in ['update','partial_update','destroy']:
-            permission_classes = [CD]
-        elif self.action in ['create']:
-            permission_classes = [IS]
-        elif self.action in ['list','retrieve']:
-            permission_classes = [permissions.IsAuthenticated]
-        else:
-            permission_classes = [permissions.IsAdminUser]
-        return [per() for per in permission_classes]
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_staff:
-            return self.queryset
-        else:
-            return self.queryset.filter(access__user=user)
+
     def sender(self,request,response,trigger_time,name):
         if response.status_code in [201,200]:
             instance = self.get_object()
@@ -573,32 +581,9 @@ class PrintCommentView(views.APIView):
 # LOCK it in the real server, to set the first administer
 class AdamView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
-    # @extend_schema(
-    #     operation_id="set_superuser",
-    #     description="Set the first superuser",
-    #     parameters=[
-    #         OpenApiParameter(
-    #             name='Authorization',
-    #             description='JWT token',
-    #             required=True,
-    #             type=OpenApiTypes.STR,
-    #             location=OpenApiParameter.HEADER
-    #         )
-    #     ],
-    #     responses={
-    #         200: OpenApiTypes.OBJECT(
-    #             properties={
-    #                 'message': OpenApiTypes.STR
-    #             }
-    #         ),
-    #         400: OpenApiTypes.OBJECT(
-    #             properties={
-    #                 'error': OpenApiTypes.STR
-    #             }
-    #         )
-    #     }
-    # )
+    @extend_schema(request=None,responses={200:None,400:None})
     def get(self, request, *args, **kwargs):
+        serializer_class = serializers.EmptySerializer()
         user=request.user
         if len(list(CustomUser.objects.all()))==1 and not (user.is_superuser and user.is_staff):
             user.is_superuser=True
@@ -611,43 +596,12 @@ class AdamView(views.APIView):
 # Certain evaluaters
 class SetUserStateView(views.APIView):
     permission_classes = [permissions.IsAdminUser]
-    # @extend_schema(
-    #     operation_id="set_user_state",
-    #     description="Set a user's state in the system",
-    #     parameters=[
-    #         OpenApiParameter(name='Authorization',description='JWT token',required=True,type=OpenApiTypes.STR,location=OpenApiParameter.HEADER)
-    #     ],
-    #     request={
-    #         'application/json': OpenApiTypes.OBJECT(
-    #             properties={
-    #                 'is_active':OpenApiTypes.BOOL,'is_staff':OpenApiTypes.BOOL,'is_superuser':OpenApiTypes.BOOL
-    #             },
-    #             required=[]
-    #         )
-    #     },
-    #     responses={
-    #         200: OpenApiTypes.OBJECT(
-    #             properties={
-    #                 'message': OpenApiTypes.STR,
-    #                 'data': OpenApiTypes.OBJECT(
-    #                     properties={
-    #                         'is_active':OpenApiTypes.BOOL,'is_staff':OpenApiTypes.BOOL,'is_superuser':OpenApiTypes.BOOL
-    #                     }
-    #                 )
-    #             }
-    #         ),
-    #         400: OpenApiTypes.OBJECT(
-    #             properties={
-    #                 'error': OpenApiTypes.STR
-    #             }
-    #         )
-    #     }
-    # )
     def get_object(self,pk):
         try:
             return CustomUser.objects.get(id=pk)
         except CustomUser.DoesNotExist:
             raise Http404
+    @extend_schema(request=SetUserStateSerializer,responses={200:SetUserStateSerializer,400:SetUserStateSerializer})
     def patch(self,request,pk,format=None): # update
         obj = self.get_object(pk)
         serializer = SetUserStateSerializer(instance=obj,data=request.data,partial=True,context={"request":request})
@@ -675,6 +629,7 @@ class SetFileStateView(views.APIView):
             return File.objects.get(id=pk)
         except File.DoesNotExist:
             raise Http404
+    @extend_schema(request=SetFileStateSerializer,responses={200:SetFileStateSerializer,400:SetFileStateSerializer})
     def patch(self,request,pk,format=None): # update
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -703,11 +658,13 @@ class SetFileStateView(views.APIView):
 
 class DistributeAccountView(views.APIView):
     permission_classes = [IPAC]
+    # serializer_class = DistributeAccountSerializer
     def get_object(self,pk):
         try:
             return Contract.objects.get(id=pk)
         except Contract.DoesNotExist:
             raise Http404
+    @extend_schema(request=DistributeAccountSerializer,responses={200:DistributeAccountSerializer,400:DistributeAccountSerializer})
     def patch(self,request,pk,format=None): # update
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -734,11 +691,13 @@ class DistributeAccountView(views.APIView):
 
 class AssignCommentView(views.APIView):
     permission_classes = [IC]
+    # serializer_class = AssignCommentSerializer
     def get_object(self,pk):
         try:
             return Comment.objects.get(id=pk)
         except Comment.DoesNotExist:
             raise Http404
+    @extend_schema(request=AssignCommentSerializer,responses={200:AssignCommentSerializer,400:AssignCommentSerializer})
     def patch(self,request,pk,format=None):
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -764,6 +723,7 @@ class TreatCommentView(views.APIView):
             return File.objects.get(id=pk)
         except File.DoesNotExist:
             raise Http404
+    @extend_schema(request=TreatCommentSerializer,responses={200:TreatCommentSerializer,400:TreatCommentSerializer})
     def patch(self,request,pk,format=None):
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -776,12 +736,22 @@ class TreatCommentView(views.APIView):
 class SetChiefView(views.APIView):
     # a user invited to set as a chief
     permission_classes = [permissions.IsAuthenticated]
-    def get_object(self,pk):
+    # @extend_schema(
+    #     operation_id="set_chief",
+    #     description="Set chief invited into a team",
+    #     parameters=set_parameters(auth=True,
+    #                               query={'token':OpenApiTypes.STR},
+    #                               path={'pk':OpenApiTypes.INT}),
+    #     responses=set_response([200,400,404])
+    # )
+    def get_object(self,pk):# pk is the id of contract
         try:
             return OrgConRight.objects.select_related('con','org').get(id=pk)
         except OrgConRight.DoesNotExist:
             raise Http404
+    @extend_schema(request=None,responses={200:None,400:None})
     def patch(self,request,pk,format=None):
+        serializer_class = serializers.EmptySerializer()
         token = request.query_params.get('token')
         obj = self.get_object(pk)
         user = request.user
@@ -820,9 +790,23 @@ class SetChiefView(views.APIView):
         )
 
 class ResetPasswordConfirmView(views.APIView):
-    def post(self,request):
-        uid = request.data.get('uid',None)
-        token = request.data.get('token',None)
+    # @extend_schema(
+    #     operation_id="reset_password_confirm",
+    #     description="Confirm to reset password when forgot",
+    #     parameters=set_parameters(auth=False,
+    #                               path={'uid':OpenApiTypes.STR,'token':OpenApiTypes.STR}),
+    #     request=set_request(
+    #         properties={
+    #             'new_password':OpenApiTypes.STR,
+    #             'repeat_new_password':OpenApiTypes.STR
+    #         },
+    #         required=['new_password','repeat_new_password']
+    #     ),
+    #     responses=set_response([200,400,404])
+    # )
+    @extend_schema(request=None,responses={200:None,400:None})
+    def post(self,request,uid,token):
+        serializer_class = serializers.EmptySerializer()
         pwd = request.data.get('new_password',None)
         try:
             id = force_str(urlsafe_base64_decode(uid))
@@ -871,12 +855,27 @@ class RaiseBoycottView(views.APIView):
 #Certain poster
 class InviteChiefView(views.APIView):
     permission_classes = [IPAC|permissions.IsAdminUser]
+    # @extend_schema(
+    #     operation_id="invite_chief",
+    #     description="Invite chief into teams. Here the key is the id of organization, the value is the email to invite and the total number of pairs is not fixed.",
+    #     parameters=set_parameters(auth=True,
+    #                               path={'pk':OpenApiTypes.INT}),
+    #     request=set_request(
+    #         properties={
+    #             'org_id':OpenApiTypes.STR 
+    #         },
+    #         required=['org_id']
+    #     ),
+    #     responses=set_response([200,400,404])
+    # )
     def get_object(self,pk):
         try:
             return Contract.objects.get(id=pk)
         except Contract.DoesNotExist:
             raise Http404
+    @extend_schema(request=None,responses={200:None,400:None})
     def post(self,request,pk,format=None):
+        serializer_class = serializers.EmptySerializer()
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
         orgs = Organization.objects.filter(con_rights__con=obj,con_rights__chief=None)
@@ -900,7 +899,21 @@ class InviteChiefView(views.APIView):
     
 class ForgotPasswordView(views.APIView):
     permission_classes = [permissions.AllowAny]
+    # @extend_schema(
+    #     operation_id="forgot_password",
+    #     description="demand when forget password",
+    #     parameters=set_parameters(auth=False),
+    #     request=set_request(
+    #         properties={
+    #             'email':OpenApiTypes.STR
+    #         },
+    #         required=['email']
+    #     ),
+    #     responses=set_response([200,400])
+    # )
+    @extend_schema(request=None,responses={200:None,400:None})
     def post(self,request):
+        serializer_class = serializers.EmptySerializer()
         form = ResetPasswordForm(data=request.data)
         if form.is_valid():
             form.save(request=request)

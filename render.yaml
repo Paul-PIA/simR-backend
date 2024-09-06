@@ -14,13 +14,14 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: simr-database
+          name: simr_database
           property: connectionString # Utilise la propriété correcte ici
-
       - key: SECRET_KEY
         generateValue: true
       - key: WEB_CONCURRENCY
         value: 4
+      - key: DJANGO_SETTINGS_MODULE
+        value: simR.settings
       # - key: CELERY_BROKER_URL
       #   fromService:
       #     name: celery-redis

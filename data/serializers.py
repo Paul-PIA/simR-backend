@@ -336,13 +336,13 @@ class FileSerializer(serializers.ModelSerializer):
             self.fields['con'].read_only = True
             self.fields['exer'].read_only = True
             self.fields['is_template'].read_only = True
-        else: #auto set name while uploading
-            request = self.context['request']
-            data = request.data
-            if data['name'] == "":
-                data['name'] = request.FILES.get('content').name
-            else:
-                data['name'] = data['name'] + ".xlsx"
+        # else: #auto set name while uploading
+        #     request = self.context['request']
+        #     data = request.data
+        #     if data['name'] == "":
+        #         data['name'] = request.FILES.get('content').name
+        #     else:
+        #         data['name'] = data['name'] + ".xlsx"
     def validate(self, attrs):
         request = self.context['request']
         if self.instance is not None: # while updating

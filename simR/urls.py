@@ -38,7 +38,7 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     #password reset, not passed test 
     # path('dj-rest-auth/password/reset/',PasswordResetView.as_view(),name='rest_password_reset'),
-    path('auth/password/reset/confirm/<uidb64>/<token>/',PasswordResetConfirmView.as_view(),name='password_reset_confirm'),
+    path('auth/password/reset/confirm/<int:uidb64>/<str:token>/',PasswordResetConfirmView.as_view(),name='password_reset_confirm'),
     # to get token for API requests
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

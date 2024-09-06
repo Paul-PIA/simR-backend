@@ -7,6 +7,7 @@ app_name = "data"
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path('set-csrf-token/', views.set_csrf_token, name='set-csrf-token'),
     # path("<int:id>/", views.profile, name="profile"),
     path('api/', include(router.urls)),
     
@@ -24,7 +25,7 @@ urlpatterns = [
     path('api/raiseboycott/<int:pk>/',views.RaiseBoycottView.as_view()),
 
     path('api/invitechief/<int:pk>/',views.InviteChiefView.as_view()),
-    path('api/resetpasswordconfirm/',views.ResetPasswordConfirmView.as_view()),
+    path('api/resetpasswordconfirm/<str:uid>/<str:token>/',views.ResetPasswordConfirmView.as_view()),
     #path('api/test/',views.TestView.as_view()),
 
 
