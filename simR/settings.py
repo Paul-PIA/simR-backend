@@ -130,6 +130,8 @@ CORS_ALLOWED_ORIGINS = [ #CROS protector
     "https://simr.vercel.app",
 ]
 
+CORS_ALLOW_CREDENTIALS = True 
+
 SOCIALACCOUNT_PROVIDERS = {
     # For each OAuth based provider, either add a ``SocialApp``
     # (``socialaccount`` app) containing the required client
