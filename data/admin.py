@@ -41,7 +41,7 @@ class InvitationAdmin(admin.ModelAdmin):
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ('actor','event','object','message','trigger_time','send_time','is_read')
+    list_display = ('actor','event','object','message','trigger_time','send_time')
 
 ### right
 @admin.register(MailBell)
