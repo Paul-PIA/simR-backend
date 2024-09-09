@@ -131,6 +131,8 @@ CORS_ALLOWED_ORIGINS = [ #CROS protector
 ]
 
 CORS_ALLOW_CREDENTIALS = True 
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
 
 SOCIALACCOUNT_PROVIDERS = {
     # For each OAuth based provider, either add a ``SocialApp``
