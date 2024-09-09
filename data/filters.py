@@ -5,7 +5,9 @@ from .models import FileAccess,MailBell,Share
 from .models import OrgConRight,OrgExerRight,UserExerRight
 
 #searchable models
-#All that can be set: exact,iexact,contains,icontains,in,gt,gte,lt,lte,startswith,istartswith,endswith,iendswith
+#All that can be set: exact,iexact,contains,icontains,in,
+# gt,gte,lt,lte,
+# startswith,istartswith,endswith,iendswith
 class UserFilter(filters.FilterSet):
     class Meta:
         model = CustomUser

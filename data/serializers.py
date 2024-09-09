@@ -190,7 +190,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id','username','first_name','last_name','email','tel','adrs','adrs2','org','post','city']
         read_only_fields = ['id']
     def validate_org(self,value):
-        if self.instance and self.instance.org and value:
+        if self.instance and self.instance.org and value: # modification forbidden
             raise serializers.ValidationError("Parameter org is read-only once set.")
         else:
             return value
@@ -222,7 +222,7 @@ class ConSerializer(serializers.ModelSerializer):
         read_only_fields = ['id',]
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
-        if self.instance is not None:
+        if self.instance is not None: # modification forbidden
             self.fields['nb_org'].read_only =True
             self.fields['nb_access'].read_only =True
     def validate(self, attrs):
@@ -244,10 +244,6 @@ class ConSerializer(serializers.ModelSerializer):
             if len(attrs['org']) != 1:
                 raise serializers.ValidationError("Only the principal organization is supposed to be decided.")
         return super().validate(attrs)
-    # def to_representation(self, instance):
-    #     data = super().to_representation(instance)
-    #     data['org']= data['org_detail']
-    #     return data
     def create(self, validated_data):
         contract = super().create(validated_data)
         org = contract.org.first()
@@ -285,7 +281,7 @@ class ExerSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
-        if self.instance is not None:
+        if self.instance is not None: # modification forbidden
             self.fields['con'].read_only =True
             self.fields['org'].read_only =True
     def validate_org(self,value):
@@ -375,7 +371,7 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ['id','is_treated','dealer',]
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
-        if self.instance is not None:
+        if self.instance is not None: # modification forbidden
             self.fields['line'].read_only = True
             self.fields['colone'].read_only = True
             self.fields['commenter'].read_only = True
@@ -418,7 +414,7 @@ class InvitationSerializer(serializers.ModelSerializer):
     subject = serializers.CharField()
     class Meta:
         model = Invitation
-    #     fields = '__all__'
+        fields = '__all__'
     # def validate_email(self,value):
     #     try:
     #         CustomUser.objects.get(email=value)
@@ -488,6 +484,11 @@ class DistributeAccountSerializer(serializers.ModelSerializer):
         read_only_fields = ['id',]
     def validate(self, attrs):
         dis = attrs.get('distribution',None) # a distribution in json format
+        # for example dis={
+        #     org_3_name:6,
+        #     org_5_name:2,
+        #     org_8_name:4,
+        # }
         if dis is not None: # set new distribution
             orgs = self.instance.org.all()
             rights = OrgConRight.objects.select_related('org').prefetch_related('staff').filter(con=self.instance) # simplify the query
