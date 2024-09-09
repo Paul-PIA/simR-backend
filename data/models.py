@@ -7,6 +7,9 @@ from django.core.exceptions import ValidationError
 
 from .tasks import send_celery
 
+# db_index=True accelerates the search
+# unique_together means a unique multiset of a model
+
 ### instances
 class CustomUser(AbstractUser): ### as user in code
     tel = models.CharField(max_length=31,verbose_name="telephone number")
@@ -50,7 +53,7 @@ class Contract(models.Model):  ### as con in code
         return self.name
 
 EXER_TYPE = (
-        ('1', 'Type1'),
+        ('1', 'Type1'), # a default type left, delete it or remain it on application
         ('G', 'Goal'),
         ('R', 'Review ex-post'),
         ('P', 'Plan'),
@@ -74,13 +77,12 @@ class Exercise(models.Model):  ### as exer in code
     def __str__(self): #to string
         return self.name
     
-def file_path(instance,filename):
+def file_path(instance,filename): # set the storage path of files uploaded
     return "contract_{0}/exercise_{1}/{2}".format(
         instance.con.id,
         instance.exer.id,
         instance.name
     )
-
 class File(models.Model):
     #id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=63)
@@ -123,9 +125,8 @@ class Comment(models.Model):
     def __str__(self):#to string
         return self.text
 
-def set_token():
+def set_token(): # give a random token for invitation email
     return uuid.uuid4().__str__()
-
 class Invitation(models.Model):
     token = models.CharField(default=set_token,unique=True)
     email = models.EmailField(max_length=63)
@@ -136,11 +137,11 @@ class Invitation(models.Model):
     inviter = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="invitations")
     class Meta:
         ordering = ['id','activated_at','expired_at']        
-    def __str__(self):#to string
+    def __str__(self): # to string
         return self.token
     def is_expired(self):
         return now() > self.expired_at
-    def send(self,right,message):#send invitation for right=right
+    def send(self,right,message): # send invitation for right=right
         name = right.con.name
         if message == "" or message == None:
             message = f"Hello,\n{self.inviter.username} in {self.inviter.org} has sent you an invitation to participate in the contract {name}.\n"
@@ -153,14 +154,13 @@ class Invitation(models.Model):
             False,
         )
 
-EVENT_TYPE = (
+EVENT_TYPE = ( # type of event written in the notification
     ('C', 'CREATE'),
     ('U', 'UPDATE'),
     ('D', 'DELETE'),
     ('S', 'SHARE'),
 )
-
-OBJ_TYPE = (
+OBJ_TYPE = ( # type of object edited in the notification
     ('E', 'Exercise'),
     ('U', 'User'),
     ('F', 'File'),
@@ -178,9 +178,9 @@ class Notification(models.Model):
     event = models.CharField(choices=EVENT_TYPE)
     
     message = models.CharField(max_length=1023)
-    trigger_time = models.DateTimeField()
-    send_time = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
+    trigger_time = models.DateTimeField() # time of action
+    send_time = models.DateTimeField(auto_now_add=True) # time of sending notification
+    # is_read = models.BooleanField(default=False) # I give up this, perhaps reuse it on application, but it needs to change a lot 
 
 ### rights
 class MailBell(models.Model):
@@ -196,14 +196,13 @@ class MailBell(models.Model):
     def __str__(self):#to string
         return CustomUser.__str__(self.user)
 
-ROLE_TYPE = (
+ROLE_TYPE = ( # role types in the exercises stored in the rights
     ('A', 'Approver'),
     ('C', 'Contributer'),
     ('O', 'Observer'),
     ('S', 'Selfdefined'),
     ('U', 'Undefined'),
 )
-
 class OrgConRight(models.Model):
     org = models.ForeignKey("Organization",on_delete=models.CASCADE,related_name="con_rights",verbose_name="organization",db_index=True)
     con = models.ForeignKey("Contract",on_delete=models.CASCADE,related_name="org_rights",verbose_name="contract",db_index=True)
@@ -227,15 +226,16 @@ class OrgExerRight(models.Model):
     
     role = models.CharField(max_length=1,choices=ROLE_TYPE,default='U')
     input = models.BooleanField(default=False)
-    output = models.BooleanField(default=False)
-    graph = models.BooleanField(default=False)
-    rewrite = models.BooleanField(default=False)
+    output = models.BooleanField(default=False) #two rights useless, i cant understand them, perhaps you will implement them on application
+    graph = models.BooleanField(default=False) # the right to see the graph
+    rewrite = models.BooleanField(default=False) # the right to edit
     #modifier les templates
     #exécuter les sénarios
     #modifier ses propres documents une fois partagé
-    comment = models.BooleanField(default=False)
-    download = models.BooleanField(default=False)
-    share = models.BooleanField(default=False)
+    # the three fields perhaps are not pratical, but perhaps you will add them on application
+    comment = models.BooleanField(default=False) # the right to comment
+    download = models.BooleanField(default=False) # the right to download
+    share = models.BooleanField(default=False) # the right to share
 
     class Meta:
         ordering = ['org','exer']
@@ -267,12 +267,12 @@ class UserExerRight(models.Model):
     def __str__(self):#to string
         return Exercise.__str__(self.exer)+CustomUser.__str__(self.user)
     
-class FileAccess(models.Model):
+class FileAccess(models.Model): # record the orgs and users who can get access to the file
     file = models.OneToOneField("File",on_delete=models.CASCADE,primary_key=True,related_name="access",db_index=True)
     user = models.ManyToManyField("CustomUser",related_name="file_access")
     org = models.ManyToManyField("Organization",related_name="file_access",verbose_name="organization")
 
-class Share(models.Model):
+class Share(models.Model): # record the action of sharing
     from_user = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="share_to",db_index=True)
     to_user = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="shared_by",db_index=True)
     file = models.ForeignKey("File",on_delete=models.CASCADE,related_name="share",db_index=True)

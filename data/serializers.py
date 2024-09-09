@@ -29,7 +29,7 @@ class ShareSerializer(serializers.ModelSerializer):
             self.fields['file'].read_only =True
             self.fields['between_org'].read_only =True
     def validate(self, attrs):
-        if self.instance is not None: # skip while updating
+        if self.instance is not None: # skip while updating the message
             return super().validate(attrs)
         # while sharing
         attrs['from_user'] = self.context['request'].user
@@ -40,7 +40,7 @@ class ShareSerializer(serializers.ModelSerializer):
         con = attrs['file'].con
         right = OrgConRight.objects.filter(con=con,org=org)
         if not right.exists():
-                raise serializers.ValidationError("The receiver's organization isn't in the contract.")
+            raise serializers.ValidationError("The receiver's organization isn't in the contract.")
         if attrs.get('between_org',None): # while sharing to a new org 
             if org == attrs['from_user'].org: #refuse sharing to its own org
                 raise serializers.ValidationError("It's no use to share it to your organization.")
@@ -76,14 +76,14 @@ class MailBellSerializer(serializers.ModelSerializer):
         fields = '__all__'
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
-        if self.instance is not None:
+        if self.instance is not None: # modification forbidden
             self.fields['user'].read_only =True
 class FileAccessSerializer(serializers.ModelSerializer):
     file = PKRF(queryset=File.objects.all())
     class Meta:
         model = FileAccess
         fields = '__all__'
-        read_only_fields = ['file','user','org']
+        read_only_fields = ['file','user','org'] # modification forbidden
 
 def chiefrightcopy(user:CustomUser,exer:Exercise,actor:CustomUser): # to copy the the exer_right from org to its chief
     right = OrgExerRight.objects.get(exer=exer,org__users=user)
@@ -99,7 +99,7 @@ def chiefrightcopy(user:CustomUser,exer:Exercise,actor:CustomUser): # to copy th
     chiefright.save()
     trigger_time = timezone.now()
     message = f"Your right in exercise {exer.name} is reset."
-    send_notification.delay(
+    send_notification.delay( #send notification
         receiver = [user.id],#list of ids
         actor = actor.id, # id
         message = message,event = 'U',object = 'R',
@@ -110,7 +110,7 @@ class OrgConRightSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrgConRight
         fields = '__all__'
-        read_only_fields = ['id','org','con','is_principal','nb_access','chief']
+        read_only_fields = ['id','org','con','is_principal','nb_access','chief'] # modification forbidden
     def validate_staff(self,value):
         if len(value)>self.instance.nb_access:
             raise serializers.ValidationError("List of staff is too long.")

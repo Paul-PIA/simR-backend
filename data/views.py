@@ -51,7 +51,7 @@ def trigger_fidele(request):
 def set_csrf_token(request):
     return JsonResponse({'detail': 'CSRF cookie set'})
 
-
+@extend_schema(tags=['User'])
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.select_related('org').all()
     serializer_class = serializers.UserSerializer
@@ -65,6 +65,7 @@ class UserViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [permissions.IsAuthenticated]
         return [per() for per in permission_classes]
+@extend_schema(tags=['Organization'])
 class OrgViewSet(viewsets.ModelViewSet):
     queryset = Organization.objects.prefetch_related('cons').all()
     serializer_class = serializers.OrgSerializer
@@ -76,6 +77,7 @@ class OrgViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [permissions.IsAuthenticated]
         return [per() for per in permission_classes]
+@extend_schema(tags=['Contract'])
 class ConViewSet(viewsets.ModelViewSet):
     queryset = Contract.objects.prefetch_related('org').all()
     serializer_class = serializers.ConSerializer
@@ -128,6 +130,7 @@ class ConViewSet(viewsets.ModelViewSet):
                 message = message_removed,event = 'D',object = 'T',
                 trigger_time = trigger_time
             )
+@extend_schema(tags=['Exercise'])
 class ExerViewSet(viewsets.ModelViewSet):
     queryset = Exercise.objects.select_related('con').prefetch_related('user_rights__user').all()
     serializer_class = serializers.ExerSerializer
@@ -171,7 +174,7 @@ class ExerViewSet(viewsets.ModelViewSet):
             message = message,event = 'C',object = 'E',
             trigger_time = trigger_time
         )
-    
+@extend_schema(tags=['File'])
 class FileViewSet(viewsets.ModelViewSet):
     queryset = File.objects.select_related('uploader','con','exer','access').prefetch_related('access__user').all()
     serializer_class = serializers.FileSerializer
@@ -236,7 +239,7 @@ class FileViewSet(viewsets.ModelViewSet):
                 message = message,event = event,object = 'F',
                 trigger_time = trigger_time
             )
-
+@extend_schema(tags=['Comment'])
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.select_related('file','commenter','dealer').prefetch_related('file__access__user').all()
     serializer_class = serializers.CommentSerializer
@@ -285,7 +288,7 @@ class CommentViewSet(viewsets.ModelViewSet):
                 message = message,event = 'C',object = 'M',
                 trigger_time = trigger_time
             )
-
+@extend_schema(tags=['Notification'])
 class NotificationViewSet(viewsets.ModelViewSet):
     queryset = Notification.objects.select_related('actor').all()
     serializer_class = serializers.NotificationSerializer
@@ -306,6 +309,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
             return self.queryset.filter(receiver=user)
 
 #rights
+@extend_schema(tags=['Mailbell'])
 class MailBellViewSet(viewsets.ModelViewSet):
     queryset = MailBell.objects.all()
     serializer_class = serializers.MailBellSerializer
@@ -317,7 +321,7 @@ class MailBellViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         return self.queryset.filter(user=user)
-
+@extend_schema(tags=['Share File'])
 class ShareViewSet(viewsets.ModelViewSet):
     queryset = Share.objects.select_related('from_user','to_user','file').all()
     serializer_class = serializers.ShareSerializer
@@ -367,7 +371,7 @@ class ShareViewSet(viewsets.ModelViewSet):
                 message = message_to,event = 'S',object = 'F',
                 trigger_time = trigger_time
             )
-
+@extend_schema(tags=['File Access'])
 class FileAccessViewSet(viewsets.ModelViewSet):
     queryset = FileAccess.objects.all()
     serializer_class = serializers.FileAccessSerializer
@@ -378,7 +382,8 @@ class FileAccessViewSet(viewsets.ModelViewSet):
         return Response({"detail":"Updating access to file via API is not allowed."})
     def destroy(self, request, *args, **kwargs): # abandonned
         return Response({"detail":"Deleting access to file via API is not allowed."})
-    
+
+@extend_schema(tags=['Team/Org Con Right'])
 class OrgConRightViewSet(viewsets.ModelViewSet):
     queryset = OrgConRight.objects.select_related('org').select_related('con').prefetch_related('staff').all()
     serializer_class = serializers.OrgConRightSerializer
@@ -434,6 +439,7 @@ class OrgConRightViewSet(viewsets.ModelViewSet):
                     message = message_removed,event = 'D',object = 'T',
                     trigger_time = trigger_time
                 )
+@extend_schema(tags=['Org Exer Right'])
 class OrgExerRightViewSet(viewsets.ModelViewSet):
     queryset = OrgExerRight.objects.all()
     serializer_class = serializers.OrgExerRightSerializer
@@ -448,6 +454,7 @@ class OrgExerRightViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [permissions.IsAdminUser]
         return [per() for per in permission_classes]
+@extend_schema(tags=['User Exer Right'])
 class UserExerRightViewSet(viewsets.ModelViewSet):
     queryset = UserExerRight.objects.select_related('user','exer').prefetch_related('user__org').all()
     serializer_class = serializers.UserExerRightSerializer
@@ -583,7 +590,6 @@ class AdamView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
     @extend_schema(request=None,responses={200:None,400:None})
     def get(self, request, *args, **kwargs):
-        serializer_class = serializers.EmptySerializer()
         user=request.user
         if len(list(CustomUser.objects.all()))==1 and not (user.is_superuser and user.is_staff):
             user.is_superuser=True
@@ -601,7 +607,7 @@ class SetUserStateView(views.APIView):
             return CustomUser.objects.get(id=pk)
         except CustomUser.DoesNotExist:
             raise Http404
-    @extend_schema(request=SetUserStateSerializer,responses={200:SetUserStateSerializer,400:SetUserStateSerializer})
+    @extend_schema(request=SetUserStateSerializer,responses={200:SetUserStateSerializer,400:SetUserStateSerializer},tags=['Evaluator'])
     def patch(self,request,pk,format=None): # update
         obj = self.get_object(pk)
         serializer = SetUserStateSerializer(instance=obj,data=request.data,partial=True,context={"request":request})
@@ -629,7 +635,7 @@ class SetFileStateView(views.APIView):
             return File.objects.get(id=pk)
         except File.DoesNotExist:
             raise Http404
-    @extend_schema(request=SetFileStateSerializer,responses={200:SetFileStateSerializer,400:SetFileStateSerializer})
+    @extend_schema(request=SetFileStateSerializer,responses={200:SetFileStateSerializer,400:SetFileStateSerializer},tags=['Evaluator'])
     def patch(self,request,pk,format=None): # update
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -664,7 +670,7 @@ class DistributeAccountView(views.APIView):
             return Contract.objects.get(id=pk)
         except Contract.DoesNotExist:
             raise Http404
-    @extend_schema(request=DistributeAccountSerializer,responses={200:DistributeAccountSerializer,400:DistributeAccountSerializer})
+    @extend_schema(request=DistributeAccountSerializer,responses={200:DistributeAccountSerializer,400:DistributeAccountSerializer},tags=['Evaluator'])
     def patch(self,request,pk,format=None): # update
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -697,7 +703,7 @@ class AssignCommentView(views.APIView):
             return Comment.objects.get(id=pk)
         except Comment.DoesNotExist:
             raise Http404
-    @extend_schema(request=AssignCommentSerializer,responses={200:AssignCommentSerializer,400:AssignCommentSerializer})
+    @extend_schema(request=AssignCommentSerializer,responses={200:AssignCommentSerializer,400:AssignCommentSerializer},tags=['Evaluator'])
     def patch(self,request,pk,format=None):
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -723,7 +729,7 @@ class TreatCommentView(views.APIView):
             return File.objects.get(id=pk)
         except File.DoesNotExist:
             raise Http404
-    @extend_schema(request=TreatCommentSerializer,responses={200:TreatCommentSerializer,400:TreatCommentSerializer})
+    @extend_schema(request=TreatCommentSerializer,responses={200:TreatCommentSerializer,400:TreatCommentSerializer},tags=['Evaluator'])
     def patch(self,request,pk,format=None):
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -736,22 +742,13 @@ class TreatCommentView(views.APIView):
 class SetChiefView(views.APIView):
     # a user invited to set as a chief
     permission_classes = [permissions.IsAuthenticated]
-    # @extend_schema(
-    #     operation_id="set_chief",
-    #     description="Set chief invited into a team",
-    #     parameters=set_parameters(auth=True,
-    #                               query={'token':OpenApiTypes.STR},
-    #                               path={'pk':OpenApiTypes.INT}),
-    #     responses=set_response([200,400,404])
-    # )
     def get_object(self,pk):# pk is the id of contract
         try:
             return OrgConRight.objects.select_related('con','org').get(id=pk)
         except OrgConRight.DoesNotExist:
             raise Http404
-    @extend_schema(request=None,responses={200:None,400:None})
+    @extend_schema(request=None,responses={200:None,400:None},tags=['Evaluator'])
     def patch(self,request,pk,format=None):
-        serializer_class = serializers.EmptySerializer()
         token = request.query_params.get('token')
         obj = self.get_object(pk)
         user = request.user
@@ -804,9 +801,8 @@ class ResetPasswordConfirmView(views.APIView):
     #     ),
     #     responses=set_response([200,400,404])
     # )
-    @extend_schema(request=None,responses={200:None,400:None})
+    @extend_schema(request=None,responses={200:None,400:None},tags=['Evaluator'])
     def post(self,request,uid,token):
-        serializer_class = serializers.EmptySerializer()
         pwd = request.data.get('new_password',None)
         try:
             id = force_str(urlsafe_base64_decode(uid))
@@ -873,9 +869,8 @@ class InviteChiefView(views.APIView):
             return Contract.objects.get(id=pk)
         except Contract.DoesNotExist:
             raise Http404
-    @extend_schema(request=None,responses={200:None,400:None})
+    @extend_schema(request=None,responses={200:None,400:None},tags=['Creater'])
     def post(self,request,pk,format=None):
-        serializer_class = serializers.EmptySerializer()
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
         orgs = Organization.objects.filter(con_rights__con=obj,con_rights__chief=None)
@@ -911,9 +906,8 @@ class ForgotPasswordView(views.APIView):
     #     ),
     #     responses=set_response([200,400])
     # )
-    @extend_schema(request=None,responses={200:None,400:None})
+    @extend_schema(request=None,responses={200:None,400:None},tags=['Creater'])
     def post(self,request):
-        serializer_class = serializers.EmptySerializer()
         form = ResetPasswordForm(data=request.data)
         if form.is_valid():
             form.save(request=request)

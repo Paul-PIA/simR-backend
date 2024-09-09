@@ -13,7 +13,7 @@ class IsPrincipalAndChief(permissions.BasePermission):
             chief = OrgConRight.objects.select_related('chief').get(con=obj,is_principal=True).chief
         return request.user == chief
 
-def get_chief(obj): # generally "find" the chief of the obj
+def get_chief(obj): # generally find the chief of the obj
     obj_type_name = type(obj).__name__
     chief = None
     right = OrgConRight.objects.select_related('chief').all()
@@ -35,7 +35,7 @@ class IsChief(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         return get_chief(obj) == request.user
     def has_permission(self, request, view):
-        if request.method == "POST":#create Exercise
+        if request.method == "POST": # when create Exercise
             org = request.user.org
             con = request.data.get('con')
             right = OrgConRight.objects.select_related('chief').filter(con=con,org=org)
@@ -44,7 +44,7 @@ class IsChief(permissions.BasePermission):
             return right.first().chief == request.user
         return super().has_permission(request, view)
 
-class IsSelf(permissions.BasePermission):
+class IsSelf(permissions.BasePermission): # generally find the user of the obj
     def has_object_permission(self, request, view, obj):
         obj_type_name = type(obj).__name__
         if obj_type_name == "CustomUser":
@@ -57,7 +57,7 @@ class IsSelf(permissions.BasePermission):
             user = obj.commenter
         return request.user == user
     def has_permission(self, request, view):
-        if view.action == 'create': # upload file
+        if view.action == 'create': # when upload file
             exer = request.data.get('exer',None)
             if not exer:
                 return False
@@ -68,11 +68,11 @@ class IsSelf(permissions.BasePermission):
 class CanDo(permissions.BasePermission):#Examine the rights
     def has_object_permission(self, request, view, obj):
         obj_type_name = type(obj).__name__
-        if obj_type_name == 'File':
-            access = FileAccess.objects.select_related('user').get(file=obj)
+        if obj_type_name == 'File': # when edit a file
+            access = FileAccess.objects.select_related('user').get(file=obj) # can access
             if not (request.user in access.user.all()):
                 return False
-            right = UserExerRight.objects.filter(user=request.user,files=obj)
+            right = UserExerRight.objects.filter(user=request.user,files=obj) # in the exercise
             if not right.exists:
                 return False
             return right.first().rewrite
@@ -98,13 +98,13 @@ class CanDo(permissions.BasePermission):#Examine the rights
 #     def has_permission(self, request, view):
 #         return super().has_permission(request, view)
 
-class IsOtherChief(permissions.BasePermission):
+class IsOtherChief(permissions.BasePermission): # check whether a user is a chief not in charge
     def has_object_permission(self, request, view, obj):
         obj_type_name = type(obj).__name__
         if obj_type_name == 'File': # to raise boycott
             right = OrgConRight.objects.filter(con=obj.con,chief=request.user) # get chiefs
             if not right.exists(): # refuse non-chief
                 return False
-            if request.user.org == obj.exer.org: # refuse in charge
+            if request.user.org == obj.exer.org: # refuse the chief in charge
                 return False
         return super().has_object_permission(request, view, obj)

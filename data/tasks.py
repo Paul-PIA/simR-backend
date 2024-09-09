@@ -20,7 +20,7 @@ def send_celery(_subject,_message,_from_email,_recipient_list,_fail_silently): #
     )
 
 @shared_task
-def send_notification(receiver,actor,message,event,object,trigger_time): # send email
+def send_notification(receiver,actor,message,event,object,trigger_time): # send notification
     from .models import Notification,CustomUser
     notification = Notification.objects.create(
         actor = CustomUser.objects.get(id=actor),

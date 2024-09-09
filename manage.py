@@ -20,3 +20,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+# SEARCH on application TO CHECK what is needed to edit on the real server

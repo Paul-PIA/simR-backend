@@ -12,7 +12,7 @@ urlpatterns = [
     path('api/', include(router.urls)),
     
     #special APIs
-    path('api/adam/',views.AdamView.as_view()), # LOCK it in the real server
+    path('api/adam/',views.AdamView.as_view()), # LOCK it on application
 
     path('api/setuserstate/<int:pk>/',views.SetUserStateView.as_view()),
     path('api/setfilestate/<int:pk>/',views.SetFileStateView.as_view()),
