@@ -12,6 +12,7 @@ from .tasks import send_celery
 
 ### instances
 class CustomUser(AbstractUser): ### as user in code
+    # The model of users, with details of the clients or administers i.e. the staff of PIA
     tel = models.CharField(max_length=31,verbose_name="telephone number")
     adrs = models.CharField(max_length=63,verbose_name="adress")
     adrs2 = models.CharField(max_length=63,verbose_name="second adress",blank=True)
@@ -26,7 +27,7 @@ class CustomUser(AbstractUser): ### as user in code
         return self.username
 
 class Organization(models.Model): ### as org in code
-    #id_org = models.IntegerField(primary_key=True)
+    # The model of organizations
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=63,unique=True,editable=True)
     tel = models.CharField(max_length=31,verbose_name="telephone number")
@@ -40,7 +41,8 @@ class Organization(models.Model): ### as org in code
         return self.name
 
 class Contract(models.Model):  ### as con in code
-    #id = models.IntegerField(primary_key=True)
+    # composed by a list of organizations
+    # which is the bord of the work and is independent between each other
     name = models.CharField(max_length=63,unique=True)
     nb_org = models.IntegerField(verbose_name="maximum of organization")
     nb_access = models.IntegerField(verbose_name="maximum of access")
@@ -60,7 +62,8 @@ EXER_TYPE = (
         ('A', 'Audit'),
     )
 class Exercise(models.Model):  ### as exer in code
-    #id = models.IntegerField(primary_key=True)
+    # the minimal system of work in details 
+    # in an organization on a template file, including the files
     name = models.CharField()
     date_i = models.DateField(verbose_name="start date")
     date_f = models.DateField(verbose_name="end date")
@@ -84,7 +87,8 @@ def file_path(instance,filename): # set the storage path of files uploaded
         instance.name
     )
 class File(models.Model):
-    #id = models.IntegerField(primary_key=True)
+    # excel files, the core to work on in front-end, 
+    # concluded in an exercise, which can be shared and commented
     name = models.CharField(max_length=63)
     content = models.FileField(upload_to=file_path)
     last_update = models.DateTimeField(auto_now=True,verbose_name="last update")
@@ -107,7 +111,7 @@ class File(models.Model):
         return self.name
     
 class Comment(models.Model):
-    #id = models.IntegerField(primary_key=True)
+    # comments to the files, which can be answered, treated and distributed to somebody
     line = models.IntegerField()
     colone = models.IntegerField()
     text = models.TextField(max_length=4095)
@@ -128,6 +132,7 @@ class Comment(models.Model):
 def set_token(): # give a random token for invitation email
     return uuid.uuid4().__str__()
 class Invitation(models.Model):
+    # The model to send invitation emails to chief of a team and verify it
     token = models.CharField(default=set_token,unique=True)
     email = models.EmailField(max_length=63)
     activated_at = models.DateTimeField(auto_now_add=True)
@@ -171,6 +176,7 @@ OBJ_TYPE = ( # type of object edited in the notification
 )
 
 class Notification(models.Model):
+    # The model to record the recent operations
     actor = models.ForeignKey('CustomUser',on_delete=models.SET_NULL,null=True,related_name="action",db_index=True)
     receiver = models.ManyToManyField('CustomUser',related_name="notification",db_index=True)
 
@@ -204,6 +210,8 @@ ROLE_TYPE = ( # role types in the exercises stored in the rights
     ('U', 'Undefined'),
 )
 class OrgConRight(models.Model):
+    # The model of state of an organization in a contract
+    # composed by a chief and a list of staff
     org = models.ForeignKey("Organization",on_delete=models.CASCADE,related_name="con_rights",verbose_name="organization",db_index=True)
     con = models.ForeignKey("Contract",on_delete=models.CASCADE,related_name="org_rights",verbose_name="contract",db_index=True)
 
@@ -221,6 +229,9 @@ class OrgConRight(models.Model):
         return Contract.__str__(self.con)+Organization.__str__(self.org)
 
 class OrgExerRight(models.Model):
+    # Rights to participate in an exercise for an organization 
+    # i.e. the rights of its chief in this contract
+    # which can be decided by roles of approver, contributer, observer and self-defined
     org = models.ForeignKey("Organization",on_delete=models.CASCADE,related_name="exer_rights",verbose_name="organization",db_index=True)
     exer = models.ForeignKey("Exercise",on_delete=models.CASCADE,related_name="org_rights",verbose_name="exercise",db_index=True)
     
@@ -245,6 +256,8 @@ class OrgExerRight(models.Model):
         return Exercise.__str__(self.exer)+Organization.__str__(self.org)
 
 class UserExerRight(models.Model):
+    # rights to participate in an exercise for a user, 
+    # which can be decided by roles of approver, contributer, observer and self-defined
     user = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="exer_rights",db_index=True)
     exer = models.ForeignKey("Exercise",on_delete=models.CASCADE,related_name="user_rights",verbose_name="exercise",db_index=True)
     
