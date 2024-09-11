@@ -95,11 +95,9 @@ class ConViewSet(viewsets.ModelViewSet):
         ### get receiver
         instance = self.get_object()
         org = instance.org.all()
-        right = OrgConRight.objects.prefetch_related('staff').filter(con=instance,org__in=org)
+        right = OrgConRight.objects.prefetch_related('staff').filter(con=instance,org__in=org) # simplify the query
         staff = right.values_list('staff',flat=True)
-        for user in staff:
-            print(user)
-        receiver = CustomUser.objects.select_related('org').prefetch_related(
+        receiver = CustomUser.objects.select_related('org').prefetch_related( # simplify the query
             models.Prefetch("con_staff",queryset=right,to_attr="_right")
         )
         for user in receiver:
@@ -209,13 +207,12 @@ class FileViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         obj = self.get_object()
         file = File.objects.select_related('exer','con','uploader__org').get(id=obj.id)
-        right = OrgConRight.objects.select_related('chief').get(org=file.uploader.org,con=file.con)
+        right = OrgConRight.objects.select_related('chief').get(org=file.uploader.org,con=file.con) # simplify the query
         name = [obj.name,obj.exer.name,right.chief.id]
         response = super().destroy(request, *args, **kwargs)
         trigger_time = now()
         self.sender(request,response,trigger_time,name=name)
         return response
-
     def sender(self,request,response,trigger_time,name):
         if response.status_code in [201,200]:
             instance = self.get_object()
@@ -245,21 +242,6 @@ class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.CommentSerializer
     filterset_class = filters.CommentFilter
     ordering_fields = ["id",]
-    def create(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        trigger_time=now()
-        self.sender(request,response,trigger_time)
-        return response
-    def destroy(self, request, *args, **kwargs):
-        file = self.get_object().file
-        action = super().destroy(request, *args, **kwargs)
-        file.is_commented = False
-        comments = file.comments.all()
-        for comment in comments:
-            if not comment.is_treated:
-                file.is_commented = True
-        file.save()
-        return action
     def get_permissions(self):
         if self.action in ['update','partial_update','destroy']:
             permission_classes = [IS]
@@ -276,10 +258,25 @@ class CommentViewSet(viewsets.ModelViewSet):
             return self.queryset
         else:
             return self.queryset.filter(file__access__user=user)
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        trigger_time=now()
+        self.sender(request,response,trigger_time)
+        return response
+    def destroy(self, request, *args, **kwargs):
+        file = self.get_object().file
+        action = super().destroy(request, *args, **kwargs)
+        file.is_commented = False
+        comments = file.comments.all()
+        for comment in comments:
+            if not comment.is_treated:
+                file.is_commented = True
+        file.save()
+        return action
     def sender(self,request,response,trigger_time):# make a comment
         if response.status_code == 201:
             instance = self.get_object()
-            file = File.objects.select_for_update('exer','org','exer__con').get(id=instance.file.id)
+            file = File.objects.select_for_update('exer','org','exer__con').get(id=instance.file.id) # simplify the query
             message = f"{request.user.username} has commented the file {file.name} in exercise {file.exer.name}."
             chief = OrgConRight.objects.select_related('chief').get(org=file.exer.org,con=file.con).chief
             send_notification.delay(
@@ -295,44 +292,37 @@ class NotificationViewSet(viewsets.ModelViewSet):
     filterset_class = filters.NotificationFilter
     ordering_fields = ["id",'trigger_time']
     permission_classes = [permissions.IsAuthenticated]
-    def create(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Creating access to file via API is not allowed."})
-    def update(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Updating access to file via API is not allowed."})
-    def destroy(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Deleting access to file via API is not allowed."})
     def get_queryset(self):
         user = self.request.user
         if user.is_staff:
             return self.queryset
         else:
             return self.queryset.filter(receiver=user)
-
+    def create(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Creating access to file via API is not allowed."})
+    def update(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Updating access to file via API is not allowed."})
+    def destroy(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Deleting access to file via API is not allowed."})
+    
 #rights
 @extend_schema(tags=['Mailbell'])
 class MailBellViewSet(viewsets.ModelViewSet):
     queryset = MailBell.objects.all()
     serializer_class = serializers.MailBellSerializer
     permission_classes = [IS]
+    def get_queryset(self):
+        user = self.request.user
+        return self.queryset.filter(user=user)
     def create(self, request, *args, **kwargs): # abandonned
         return Response({"detail":"Creating mail bell via API is not allowed."})
     def destroy(self, request, *args, **kwargs): # abandonned
         return Response({"detail":"Deleting mail bell via API is not allowed."})
-    def get_queryset(self):
-        user = self.request.user
-        return self.queryset.filter(user=user)
 @extend_schema(tags=['Share File'])
 class ShareViewSet(viewsets.ModelViewSet):
     queryset = Share.objects.select_related('from_user','to_user','file').all()
     serializer_class = serializers.ShareSerializer
     filterset_class = filters.ShareFilter
-    def update(self, request, *args, **kwargs):
-        response = super().update(request, *args, **kwargs)
-        trigger_time=now()
-        self.sender(request,response,trigger_time)
-        return response
-    def destroy(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Deleting share record via API is not allowed."})
     def get_permissions(self):
         if self.action in ['update','partial_update']:
             permission_classes = [IS]
@@ -349,6 +339,13 @@ class ShareViewSet(viewsets.ModelViewSet):
             return self.queryset
         else:
             return self.queryset.filter(models.Q(to_user=user)|models.Q(from_user=user))
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        trigger_time=now()
+        self.sender(request,response,trigger_time)
+        return response
+    def destroy(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Deleting share record via API is not allowed."})
     def sender(self,request,response,trigger_time):# share a file
         if response.status_code == 201:
             instance = self.get_object()
@@ -388,16 +385,6 @@ class OrgConRightViewSet(viewsets.ModelViewSet):
     queryset = OrgConRight.objects.select_related('org').select_related('con').prefetch_related('staff').all()
     serializer_class = serializers.OrgConRightSerializer
     filterset_class = filters.OrgConFilter
-    def create(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Creating the right via API is not allowed."})
-    def update(self, request, *args, **kwargs):# change staff
-        staff_old = list(self.get_object().staff.all())
-        response = super().update(request, *args, **kwargs)
-        trigger_time=now()
-        self.sender(request,response,trigger_time,staff_old)
-        return response
-    def destroy(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Deleting the right via API is not allowed."})
     def get_permissions(self):
         if self.action in ['update','partial_update']: # change staff
             permission_classes = [IC]
@@ -412,6 +399,16 @@ class OrgConRightViewSet(viewsets.ModelViewSet):
             return self.queryset
         else:
             return self.queryset.filter(staff=user)
+    def create(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Creating the right via API is not allowed."})
+    def update(self, request, *args, **kwargs):# change staff
+        staff_old = list(self.get_object().staff.all())
+        response = super().update(request, *args, **kwargs)
+        trigger_time=now()
+        self.sender(request,response,trigger_time,staff_old)
+        return response
+    def destroy(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Deleting the right via API is not allowed."})
     def sender(self,request,response,trigger_time,staff_old):# change staff
         if response.status_code == 200:
             instance = self.get_object()
@@ -444,30 +441,21 @@ class OrgExerRightViewSet(viewsets.ModelViewSet):
     queryset = OrgExerRight.objects.all()
     serializer_class = serializers.OrgExerRightSerializer
     filterset_class = filters.OrgExerFilter
-    def create(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Creating the right via API is not allowed."})
-    def destroy(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Deleting the right via API is not allowed."})
     def get_permissions(self):
         if self.action in ['update','partial_update']:
             permission_classes = [IC]
         else:
             permission_classes = [permissions.IsAdminUser]
         return [per() for per in permission_classes]
+    def create(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Creating the right via API is not allowed."})
+    def destroy(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Deleting the right via API is not allowed."})
 @extend_schema(tags=['User Exer Right'])
 class UserExerRightViewSet(viewsets.ModelViewSet):
     queryset = UserExerRight.objects.select_related('user','exer').prefetch_related('user__org').all()
     serializer_class = serializers.UserExerRightSerializer
     filterset_class = filters.UserExerFilter
-    def create(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Creating the right via API is not allowed."})
-    def update(self, request, *args, **kwargs):
-        response = super().update(request, *args, **kwargs)
-        trigger_time = now()
-        self.sender(request,response,trigger_time)
-        return response
-    def destroy(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Deleting the right via API is not allowed."})
     def get_permissions(self):
         if self.action in ['update','partial_update']:
             permission_classes = [IC]
@@ -483,6 +471,15 @@ class UserExerRightViewSet(viewsets.ModelViewSet):
         else:
             exers = UserExerRight.objects.filter(user=user).values_list('exer',flat=True)
             return self.queryset.filter(exer__in=exers,user__org=user.org)
+    def create(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Creating the right via API is not allowed."})
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        trigger_time = now()
+        self.sender(request,response,trigger_time)
+        return response
+    def destroy(self, request, *args, **kwargs): # abandonned
+        return Response({"detail":"Deleting the right via API is not allowed."})
     def sender(self,request,response,trigger_time):# update right
         if response.status_code == 200:
             instance = self.get_object()
@@ -585,8 +582,8 @@ class PrintCommentView(views.APIView):
         serializer = PrintCommentSerializer(comments,many=True)
         return Response(serializer.data)
 
-# LOCK it in the real server, to set the first administer
-class AdamView(views.APIView):
+# LOCK it in the real server
+class AdamView(views.APIView): #to set the first administer and superuser
     permission_classes = [permissions.IsAuthenticated]
     @extend_schema(request=None,responses={200:None,400:None})
     def get(self, request, *args, **kwargs):
@@ -607,7 +604,7 @@ class SetUserStateView(views.APIView):
             return CustomUser.objects.get(id=pk)
         except CustomUser.DoesNotExist:
             raise Http404
-    @extend_schema(request=SetUserStateSerializer,responses={200:SetUserStateSerializer,400:SetUserStateSerializer},tags=['Evaluator'])
+    @extend_schema(request=SetUserStateSerializer,responses={200:SetUserStateSerializer,400:SetUserStateSerializer},tags=['Evaluator']) #register to swagger-ui
     def patch(self,request,pk,format=None): # update
         obj = self.get_object(pk)
         serializer = SetUserStateSerializer(instance=obj,data=request.data,partial=True,context={"request":request})
@@ -635,7 +632,7 @@ class SetFileStateView(views.APIView):
             return File.objects.get(id=pk)
         except File.DoesNotExist:
             raise Http404
-    @extend_schema(request=SetFileStateSerializer,responses={200:SetFileStateSerializer,400:SetFileStateSerializer},tags=['Evaluator'])
+    @extend_schema(request=SetFileStateSerializer,responses={200:SetFileStateSerializer,400:SetFileStateSerializer},tags=['Evaluator']) #register to swagger-ui
     def patch(self,request,pk,format=None): # update
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -670,7 +667,7 @@ class DistributeAccountView(views.APIView):
             return Contract.objects.get(id=pk)
         except Contract.DoesNotExist:
             raise Http404
-    @extend_schema(request=DistributeAccountSerializer,responses={200:DistributeAccountSerializer,400:DistributeAccountSerializer},tags=['Evaluator'])
+    @extend_schema(request=DistributeAccountSerializer,responses={200:DistributeAccountSerializer,400:DistributeAccountSerializer},tags=['Evaluator'])#register to swagger-ui
     def patch(self,request,pk,format=None): # update
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -703,7 +700,7 @@ class AssignCommentView(views.APIView):
             return Comment.objects.get(id=pk)
         except Comment.DoesNotExist:
             raise Http404
-    @extend_schema(request=AssignCommentSerializer,responses={200:AssignCommentSerializer,400:AssignCommentSerializer},tags=['Evaluator'])
+    @extend_schema(request=AssignCommentSerializer,responses={200:AssignCommentSerializer,400:AssignCommentSerializer},tags=['Evaluator'])#register to swagger-ui
     def patch(self,request,pk,format=None):
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -729,7 +726,7 @@ class TreatCommentView(views.APIView):
             return File.objects.get(id=pk)
         except File.DoesNotExist:
             raise Http404
-    @extend_schema(request=TreatCommentSerializer,responses={200:TreatCommentSerializer,400:TreatCommentSerializer},tags=['Evaluator'])
+    @extend_schema(request=TreatCommentSerializer,responses={200:TreatCommentSerializer,400:TreatCommentSerializer},tags=['Evaluator'])#register to swagger-ui
     def patch(self,request,pk,format=None):
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
@@ -747,7 +744,7 @@ class SetChiefView(views.APIView):
             return OrgConRight.objects.select_related('con','org').get(id=pk)
         except OrgConRight.DoesNotExist:
             raise Http404
-    @extend_schema(request=None,responses={200:None,400:None},tags=['Evaluator'])
+    @extend_schema(request=None,responses={200:None,400:None},tags=['Evaluator']) #register to swagger-ui
     def patch(self,request,pk,format=None):
         token = request.query_params.get('token')
         obj = self.get_object(pk)
@@ -831,7 +828,7 @@ class ResetPasswordConfirmView(views.APIView):
             trigger_time = trigger_time
         )
 
-#not used
+# not in use, implement it on application
 class RaiseBoycottView(views.APIView):
     permission_classes = [IOF]
     def get_object(self,pk):
@@ -869,7 +866,7 @@ class InviteChiefView(views.APIView):
             return Contract.objects.get(id=pk)
         except Contract.DoesNotExist:
             raise Http404
-    @extend_schema(request=None,responses={200:None,400:None},tags=['Creater'])
+    @extend_schema(request=None,responses={200:None,400:None},tags=['Creater']) #register to swagger-ui
     def post(self,request,pk,format=None):
         obj = self.get_object(pk)
         self.check_object_permissions(request,obj)
