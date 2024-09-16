@@ -133,6 +133,8 @@ CORS_ALLOWED_ORIGINS = [ #CROS protector
 CORS_ALLOW_CREDENTIALS = True 
 CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_AGE = 31449600  # Durée de vie du cookie en secondes (par exemple 1 an)
+SESSION_COOKIE_AGE = 1209600  # Durée de vie de la session (2 semaines)
 
 SOCIALACCOUNT_PROVIDERS = {
     # For each OAuth based provider, either add a ``SocialApp``
