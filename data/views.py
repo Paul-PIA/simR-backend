@@ -163,8 +163,7 @@ class ExerViewSet(viewsets.ModelViewSet):
             message = f"{request.user.username} has created the exercise {request.data.get('name')}."
         if response.status_code == 200:
             message = f"{request.user.username} has updated the work time of the exercise {request.data.get('name')}."
-        instance = self.get_object()
-        rights = OrgConRight.objects.select_related('chief').filter(con=instance.con)
+        rights = OrgConRight.objects.select_related('chief').filter(con=request.data.get('con'))
         chiefs = [right.chief.id for right in rights]
         send_notification.delay(
             receiver = chiefs, # list of ids
