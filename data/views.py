@@ -159,6 +159,7 @@ class ExerViewSet(viewsets.ModelViewSet):
         self.sender(request,response,trigger_time)
         return response
     def sender(self,request,response,trigger_time): # create notification for C,U
+        instance = self.get_object()
         if response.status_code == 201:
             message = f"{request.user.username} has created the exercise {instance.name}."
         if response.status_code == 200:
