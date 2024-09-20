@@ -159,11 +159,10 @@ class ExerViewSet(viewsets.ModelViewSet):
         self.sender(request,response,trigger_time)
         return response
     def sender(self,request,response,trigger_time): # create notification for C,U
-        instance = self.get_object()
         if response.status_code == 201:
-            message = f"{request.user.username} has created the exercise {instance.name}."
+            message = f"{request.user.username} has created the exercise {request.data.get('name')}."
         if response.status_code == 200:
-            message = f"{request.user.username} has updated the work time of the exercise {instance.name}."
+            message = f"{request.user.username} has updated the work time of the exercise {request.data.get('name')}."
         instance = self.get_object()
         rights = OrgConRight.objects.select_related('chief').filter(con=instance.con)
         chiefs = [right.chief.id for right in rights]
