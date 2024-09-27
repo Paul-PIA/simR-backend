@@ -371,11 +371,12 @@ class ShareViewSet(viewsets.ModelViewSet):
 class FileAccessViewSet(viewsets.ModelViewSet):
     queryset = FileAccess.objects.all()
     serializer_class = serializers.FileAccessSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated]
     def create(self, request, *args, **kwargs): # abandonned
         return Response({"detail":"Creating access to file via API is not allowed."})
-    def update(self, request, *args, **kwargs): # abandonned
-        return Response({"detail":"Updating access to file via API is not allowed."})
+    def update(self, request, *args, **kwargs):
+        # Permettre la mise à jour de FileAccess
+        return super().update(request, *args, **kwargs)
     def destroy(self, request, *args, **kwargs): # abandonned
         return Response({"detail":"Deleting access to file via API is not allowed."})
 
