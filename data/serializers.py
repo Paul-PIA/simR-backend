@@ -361,7 +361,7 @@ class FileSerializer(serializers.ModelSerializer):
         # create and distribute access
         access = FileAccess.objects.create(file=file)
         access.user.add(user)
-        access.org.add(user.org)
+        #access.org.add(user.org)
         return file
 class CommentSerializer(serializers.ModelSerializer):
     commenter = serializers.HiddenField(default=serializers.CurrentUserDefault())
