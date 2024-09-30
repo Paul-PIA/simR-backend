@@ -80,10 +80,16 @@ class MailBellSerializer(serializers.ModelSerializer):
             self.fields['user'].read_only =True
 class FileAccessSerializer(serializers.ModelSerializer):
     file = PKRF(queryset=File.objects.all())
+
     class Meta:
         model = FileAccess
         fields = '__all__'
-        read_only_fields = ['file','user'] # modification forbidden
+        read_only_fields = ['file','user']
+
+    def validate_org(self, value):
+        if value is None:
+            return []
+        return value
     
 
 def chiefrightcopy(user:CustomUser,exer:Exercise,actor:CustomUser): # to copy the the exer_right from org to its chief
