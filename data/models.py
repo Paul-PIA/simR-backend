@@ -283,7 +283,7 @@ class UserExerRight(models.Model):
 class FileAccess(models.Model): # record the orgs and users who can get access to the file
     file = models.OneToOneField("File",on_delete=models.CASCADE,primary_key=True,related_name="access",db_index=True)
     user = models.ManyToManyField("CustomUser",related_name="file_access")
-    org = models.ManyToManyField("Organization",related_name="file_access",verbose_name="organization")
+    org = models.ManyToManyField("Organization",related_name="file_access",verbose_name="organization",default=[])
 
 class Share(models.Model): # record the action of sharing
     from_user = models.ForeignKey("CustomUser",on_delete=models.CASCADE,related_name="share_to",db_index=True)

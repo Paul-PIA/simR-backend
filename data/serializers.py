@@ -84,6 +84,7 @@ class FileAccessSerializer(serializers.ModelSerializer):
         model = FileAccess
         fields = '__all__'
         read_only_fields = ['file','user'] # modification forbidden
+    
 
 def chiefrightcopy(user:CustomUser,exer:Exercise,actor:CustomUser): # to copy the the exer_right from org to its chief
     right = OrgExerRight.objects.get(exer=exer,org__users=user)
