@@ -69,7 +69,7 @@ class CanDo(permissions.BasePermission):#Examine the rights
     def has_object_permission(self, request, view, obj):
         obj_type_name = type(obj).__name__
         if obj_type_name == 'File': # when edit a file
-            access = FileAccess.objects.select_related('user').get(file=obj) # can access
+            access = FileAccess.objects.prefetch_related('user').get(file=obj) # can access
             if not (request.user in access.user.all()):
                 return False
             right = UserExerRight.objects.filter(user=request.user,files=obj) # in the exercise
