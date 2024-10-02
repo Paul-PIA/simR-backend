@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.timezone import now
 from django.http import HttpResponse,Http404
 from django.core.exceptions import ObjectDoesNotExist as ODNE
+from django.core.files.base import ContentFile
 
 from rest_framework import viewsets,views
 from rest_framework.response import Response
@@ -33,6 +34,8 @@ from .permissions import IsPrincipalAndChief as IPAC,IsChief as IC,IsSelf as IS
 from .permissions import CanDo as CD, IsOtherChief as IOF
 # from django.template import loader
 from .tasks import send_notification,add
+
+import base64
 
 #views
 def index(request):
@@ -199,6 +202,13 @@ class FileViewSet(viewsets.ModelViewSet):
         self.sender(request,response,trigger_time,name=None)
         return response
     def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        content_base64 = request.data.get('content')
+
+        # Décoder le contenu base64
+        if content_base64:
+            decoded_content = base64.b64decode(content_base64)
+            instance.content.save(f'{instance.name}.xlsx', ContentFile(decoded_content), save=True)
         response = super().update(request, *args, **kwargs)
         trigger_time = now()
         self.sender(request,response,trigger_time,name=None)
