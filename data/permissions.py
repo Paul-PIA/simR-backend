@@ -72,7 +72,7 @@ class CanDo(permissions.BasePermission):#Examine the rights
             access = FileAccess.objects.prefetch_related('user').get(file=obj) # can access
             if not (request.user in access.user.all()):
                 return False
-            right = UserExerRight.objects.filter(user=request.user,files=obj) # in the exercise
+            right = UserExerRight.objects.filter(user=request.user,exer=obj.exer) # in the exercise
             if not right.exists:
                 return False
             return right.first().rewrite
