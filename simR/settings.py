@@ -30,6 +30,8 @@ SECRET_KEY = 'django-insecure-m121fuicgj5gd-4a1g@6jkitxbc%inpycqi8*8n*s#%^s6s$!2
 DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'simr-xxm0.onrender.com']
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # ou une valeur plus élevée si nécessaire
+
 
 
 # Application definition
