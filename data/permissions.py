@@ -26,7 +26,7 @@ def get_chief(obj): # generally find the chief of the obj
     if obj_type_name == "UserExerRight":#set right, find user's chief
         chief = right.filter(staff__icontains=obj.user,con=obj.exer.con).chief
     if obj_type_name == "Comment":#to assign a comment, find uploader's chief
-        chief = right.filter(staff__icontains=obj.file.uploader,con=obj.con).chief
+        chief = right.filter(staff__icontains=obj.file.uploader,con=obj.file.con).chief
     if obj_type_name == "File":#to set file state, find the creator of exer
         chief = obj.exer.chief
     return chief
