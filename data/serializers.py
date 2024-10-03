@@ -539,7 +539,7 @@ class AssignCommentSerializer(serializers.ModelSerializer):
         fields = ['id','dealer']
         read_only_fields = ['id',]
     def validate(self, attrs):
-        dealer = attrs['dealer']
+        dealer = attrs.get('dealer')
         user = self.context['request'].user
         right = OrgConRight.objects.get(org=user.org,con=self.instance.file.con)
         if not (dealer in right.staff.all()):
