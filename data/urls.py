@@ -26,7 +26,7 @@ urlpatterns = [
 
     path('api/invitechief/<int:pk>/',views.InviteChiefView.as_view()),
     path('api/resetpasswordconfirm/<str:uid>/<str:token>/',views.ResetPasswordConfirmView.as_view()),
-    path('fusecomments/',views.FuseCommentsView.as_view()),
+    path('api/fusecomments/',views.FuseCommentsView.as_view()),
     #path('api/test/',views.TestView.as_view()),
 
 
