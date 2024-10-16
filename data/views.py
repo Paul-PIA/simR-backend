@@ -24,7 +24,7 @@ from .models import OrgConRight,OrgExerRight,UserExerRight
 
 import data.serializers as serializers
 from .serializers import SpaceShareSerializer,SpaceSerializer,PrintCommentSerializer
-from .serializers import SetFileStateSerializer,SetUserStateSerializer,AssignCommentSerializer,TreatCommentSerializer
+from .serializers import SetFileStateSerializer,SetUserStateSerializer,AssignCommentSerializer,TreatCommentSerializer,FuseCommentSerializer
 from .serializers import DistributeAccountSerializer,RaiseBoycottSerializer,chiefrightcopy
 
 import data.filters as filters
@@ -910,3 +910,43 @@ class ForgotPasswordView(views.APIView):
             form.save(request=request)
             return Response({'status':'ok'},status=status.HTTP_200_OK)
         return Response(form.errors,status=status.HTTP_400_BAD_REQUEST)
+    
+class FuseCommentsView(views.APIView):
+    permission_classes=[IC]
+    def get_object(self,pk):
+        try:
+            return Comment.objects.get(id=pk)
+        except Comment.DoesNotExist:
+            raise Http404
+    @extend_schema(request=FuseCommentSerializer,responses={200:FuseCommentSerializer,400:FuseCommentSerializer},tags=['Evaluator'])#register to swagger-ui
+    def post(self,request):
+        comment1 = self.get_object(request.data.get('comment1'))
+        comment2 = self.get_object(request.data.get('comment2'))
+
+        if not comment1 or not comment2:
+            return Response({"error": "Both comment1_id and comment2_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = FuseCommentSerializer(instance=comment1,data=request.data,partial=True,context={"request":request})
+        if serializer.is_valid():
+            fused_text = f"{comment1.text}\n\n{comment2.text}"
+
+            # Créer un nouveau commentaire avec les propriétés de comment1
+            new_comment = Comment.objects.create(
+            line=comment1.line,
+            colone=comment1.colone,
+            text=fused_text,
+            commenter=comment1.commenter,
+            dealer=comment1.dealer,
+            file=comment1.file,
+            is_treated=comment1.is_treated,
+            parent=comment1.parent
+        )
+
+            # Mettre à jour les enfants de comment2 pour qu'ils aient pour parent new_comment
+            Comment.objects.filter(parent=comment2).update(parent=new_comment)
+                    # Supprimer les deux commentaires originaux
+            comment1.delete()
+            comment2.delete()
+            serializer.save()
+            return Response({"success": True, "new_comment_id": new_comment.id})
+        return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)

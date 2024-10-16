@@ -611,3 +611,10 @@ class RaiseBoycottSerializer(serializers.ModelSerializer):
 #     def update(self, instance, validated_data):
 #         validated_data['chief'] = self.context['request'].user
 #         return super().update(instance, validated_data)
+
+class FuseCommentSerializer(serializers.ModelSerializer):
+        comment1 = serializers.IntegerField()
+        comment2 = serializers.IntegerField()
+        class Meta:
+            model = Comment
+            fields = ['comment1','comment2']
