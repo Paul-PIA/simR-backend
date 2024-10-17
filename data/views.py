@@ -924,9 +924,9 @@ class FuseCommentsView(views.APIView):
         comment2 = self.get_object(request.data.get('comment2'))
 
         if not comment1 or not comment2:
-            return Response({"error": "Both comment1_id and comment2_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Both comment1 and comment2 are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = FuseCommentSerializer(instance=comment1,data=request.data,partial=True,context={"request":request})
+        serializer = FuseCommentSerializer(data=request.data,context={"request":request})
         if serializer.is_valid():
             fused_text = f"{comment1.text}\n\n{comment2.text}"
 
@@ -942,7 +942,8 @@ class FuseCommentsView(views.APIView):
             parent=comment1.parent
         )
 
-            # Mettre à jour les enfants de comment2 pour qu'ils aient pour parent new_comment
+            # Mettre à jour les enfants de comment1 et2 pour qu'ils aient pour parent new_comment
+            Comment.objects.filter(parent=comment1).update(parent=new_comment)
             Comment.objects.filter(parent=comment2).update(parent=new_comment)
                     # Supprimer les deux commentaires originaux
             comment1.delete()
