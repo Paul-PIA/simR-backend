@@ -175,7 +175,7 @@ WSGI_APPLICATION = 'simR.wsgi.application'
 # }
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://simr_database_wvum_user:fTRA4HdZvvFub3H0YiIqqHBWKYTgIUHu@dpg-crc64523esus739725f0-a/simr_database_wvum',
+        default='postgresql://simr_database_ix9r_user:CT3hYMfHoy3uHHORGpHLXILOVuE5vQuE@dpg-cs6clt5umphs73b76c6g-a.oregon-postgres.render.com/simr_database_ix9r',
         conn_max_age=600
     )  
 }

@@ -912,13 +912,13 @@ class ForgotPasswordView(views.APIView):
         return Response(form.errors,status=status.HTTP_400_BAD_REQUEST)
     
 class FuseCommentsView(views.APIView):
-    permission_classes=[IC]
+    permission_classes=[]
     def get_object(self,pk):
         try:
             return Comment.objects.get(id=pk)
         except Comment.DoesNotExist:
             raise Http404
-    @extend_schema(request=FuseCommentSerializer,responses={200:FuseCommentSerializer,400:FuseCommentSerializer},tags=['Evaluator'])#register to swagger-ui
+    @extend_schema(request=FuseCommentSerializer,responses={200:None,400:None},tags=['Evaluator'])#register to swagger-ui
     def post(self,request):
         comment1 = self.get_object(request.data.get('comment1'))
         comment2 = self.get_object(request.data.get('comment2'))
