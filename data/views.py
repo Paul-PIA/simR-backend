@@ -270,6 +270,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         for comment in comments:
             if not comment.is_treated:
                 file.is_commented = True
+                break
         file.save()
         return action
     def sender(self,request,response,trigger_time):# make a comment
@@ -925,6 +926,8 @@ class FuseCommentsView(views.APIView):
 
         if not comment1 or not comment2:
             return Response({"error": "Both comment1 and comment2 are required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        assert comment2.parent==comment1,"Le deuxième commentaire doit être une réponse du premier"
 
         serializer = FuseCommentSerializer(data=request.data,context={"request":request})
         if serializer.is_valid():
@@ -948,6 +951,6 @@ class FuseCommentsView(views.APIView):
                     # Supprimer les deux commentaires originaux
             comment1.delete()
             comment2.delete()
-            serializer.save()
+
             return Response({"success": True, "new_comment_id": new_comment.id})
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)

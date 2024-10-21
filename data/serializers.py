@@ -411,7 +411,7 @@ class CommentSerializer(serializers.ModelSerializer):
                 f"Hello, {chief.username}\n {self.context['request'].user.username} has commented to the file {file.name}, with content as:\n {validated_data['text']}",
                 None,
                 [chief.email],
-                fail_silently=False,
+                _fail_silently=False,
             )
         return comment
 
