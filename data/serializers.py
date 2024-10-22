@@ -359,6 +359,8 @@ class FileSerializer(serializers.ModelSerializer):
                 if attrs['exer'].con != attrs['con']:
                     raise serializers.ValidationError("The exercise isn't in the contract.")
             for value in request.FILES.values():
+                if value.name.endswith('.xlsm') or value.name.endswith('.xlm') or value.name.endswith('xltm'):
+                    raise serializers.ValidationError("For security reasons, only the types .xlsx and .xls are accepted. Please convert your file to an appropriate format.")
                 if not (value.name.endswith('.xlsx') or value.name.endswith('.xls')):
                     raise serializers.ValidationError("Only the types .xlsx and .xls are accepted.")
         return super().validate(attrs)
