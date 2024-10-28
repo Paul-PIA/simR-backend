@@ -291,3 +291,5 @@ CELERY_RESULT_SERELIZER = 'json'
 
 FRONT_END_URL = 'https://localhost:3000/'
 ACCOUNT_EMAIL_CONFIRMATION_URL = FRONT_END_URL + 'activate/{key}/'
+
+APPEND_SLASH=False
