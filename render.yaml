@@ -3,11 +3,13 @@ databases:
     plan: free
     databaseName: simr_database
     user: user
+    region: frankfurt
 
 services:
   - type: web
     plan: free
     name: simR
+    region: frankfurt
     runtime: python
     buildCommand: "./build.sh"
     startCommand: "python -m gunicorn simR.asgi:application -k uvicorn.workers.UvicornWorker"
