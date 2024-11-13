@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-m121fuicgj5gd-4a1g@6jkitxbc%inpycqi8*8n*s#%^s6s$!2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'simr-xxm0.onrender.com']
+ALLOWED_HOSTS = ['127.0.0.1', 'simr-yo8m.onrender.com']
 
 
 
@@ -176,7 +176,7 @@ WSGI_APPLICATION = 'simR.wsgi.application'
 # }
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://simr_database_muot_user:cbUPm24xjxoFyLOj3d7AKmV40ty9h7Gc@dpg-csq7f9q3esus73emcs0g-a.frankfurt-postgres.render.com/simr_database_muot',
+        default='postgresql://user:4Osj9TqogU6OzZRd2YcszAKe5upU27pY@dpg-csq7sbij1k6c738ed9bg-a.frankfurt-postgres.render.com/simr_database_o6jr',
         conn_max_age=600
     )  
 }
