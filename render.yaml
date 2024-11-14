@@ -3,13 +3,13 @@ databases:
     plan: free
     databaseName: simr_database
     user: user
-    region: frankfurt
+    region: frankfurt #Mettre la localisation la plus proche de Paris
 
 services:
   - type: web
     plan: free
     name: simR
-    region: frankfurt
+    region: frankfurt #Idem
     runtime: python
     buildCommand: "./build.sh"
     startCommand: "python -m gunicorn simR.asgi:application -k uvicorn.workers.UvicornWorker"
@@ -33,6 +33,7 @@ services:
   # - type: worker # need to pay
   #   plan: free
   #   name: celery-worker
+  #   region: frankfurt #Idem
   #   runtime: python
   #   buildCommand: "pip install -r requirements.txt"
   #   startCommand: "celery --app tasks worker --loglevel info --concurrency 4"
@@ -48,6 +49,7 @@ services:
   #   plan: free
   #   name: app
   #   runtime: python
+  #   region: frankfurt #Idem
   #   buildCommand: "pip install -r requirements.txt"
   #   startCommand: "gunicorn app:app"
   #   # autoDeploy: false
@@ -62,6 +64,7 @@ services:
   #   name: flower
   #   plan: free
   #   runtime: python
+  #   region: frankfurt #Idem
   #   buildCommand: "pip install -r requirements.txt"
   #   startCommand: "celery --app flower tasks --loglevel info"
   #   # autoDeploy: false
@@ -75,6 +78,7 @@ services:
   # - type: redis
   #   name: celery-redis
   #   plan: free
+  #   region: frankfurt #Idem
   #   # plan: starter # we choose a plan with persistence to ensure tasks are not lost upon restart
   #   maxmemoryPolicy: noeviction # recommended policy for queues
   #   ipAllowList: [] # only allow internal connections
