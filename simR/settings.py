@@ -129,7 +129,8 @@ CORS_ALLOWED_ORIGINS = [ #CROS protector
     "http://localhost:3000",
     "http://127.0.0.1:8000",
     "https://simr.vercel.app",
-    'https://simr-frontend-9t2m.onrender.com'
+    'https://simr-frontend-9t2m.onrender.com',
+    'https://simr-frontend-service.onrender.com'
 ]
 
 CORS_ALLOW_CREDENTIALS = True 
