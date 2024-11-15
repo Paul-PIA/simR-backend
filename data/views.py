@@ -649,7 +649,7 @@ class SetFileStateView(views.APIView):
     def sender(self,request,obj,trigger_time):
         _message = f"{request.user.username} has published the file {obj.name}."
         send_notification.delay(
-            receiver = obj.dealer.id,
+            receiver = obj.uploader.id,
             actor = request.user.id,
             message = _message,event = 'U',object = 'C',
             trigger_time = trigger_time
