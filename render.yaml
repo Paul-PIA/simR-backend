@@ -24,11 +24,11 @@ services:
         value: 4
       - key: DJANGO_SETTINGS_MODULE
         value: simR.settings
-      # - key: CELERY_BROKER_URL
-      #   fromService:
-      #     name: celery-redis
-      #     type: redis
-      #     property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: celery-redis
+          type: redis
+          property: connectionString
 
   # - type: worker # need to pay
   #   plan: free
@@ -75,10 +75,10 @@ services:
   #         name: celery-redis
   #         property: connectionString
 
-  # - type: redis
-  #   name: celery-redis
-  #   plan: free
-  #   region: frankfurt #Idem
-  #   # plan: starter # we choose a plan with persistence to ensure tasks are not lost upon restart
-  #   maxmemoryPolicy: noeviction # recommended policy for queues
-  #   ipAllowList: [] # only allow internal connections
+  - type: redis
+    name: celery-redis
+    plan: free
+    region: frankfurt #Idem
+    # plan: starter # we choose a plan with persistence to ensure tasks are not lost upon restart
+    maxmemoryPolicy: noeviction # recommended policy for queues
+    ipAllowList: [] # only allow internal connections
