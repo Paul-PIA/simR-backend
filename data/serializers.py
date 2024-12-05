@@ -620,3 +620,5 @@ class FuseCommentSerializer(serializers.ModelSerializer):
         class Meta:
             model = Comment
             fields = ['comment1','comment2']
+            
+            

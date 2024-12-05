@@ -1030,3 +1030,22 @@ class HomeView(views.APIView):
         if len(exercises)!=1:
             return Response({"space":"Contract","contracts":contracts.values(),"exercises":exercises.values()})
         return Response({"space":"Exercise","contracts":[],"exercises":exercises.values("id")})
+  
+@extend_schema(tags=['Custom'])    
+class filePageView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def get(self, request,pk):
+        user = request.user
+        exercise=Exercise.objects.get(id=pk)
+        files=File.objects.filter(exer=exercise)
+        access = FileAccess.objects.filter(file__in=files).prefetch_related('user', 'org')
+        access_dict = {a.file_id: a for a in access}
+        ordered_access = [access_dict[file.id] for file in files if file.id in access_dict]
+        
+        orgconright=OrgConRight.objects.get(con=exercise.con,org=user.org)
+        return Response({
+            "user":serializers.UserSerializer(user).data,
+            "exercise":serializers.ExerSerializer(exercise).data,
+            "files":serializers.FileSerializer(files,many=True).data,
+            "access":serializers.FileAccessSerializer(ordered_access,many=True).data,
+            "orgconright":serializers.OrgConRightSerializer(orgconright).data})
