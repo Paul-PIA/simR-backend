@@ -957,7 +957,7 @@ class FuseCommentsView(views.APIView):
     
 @extend_schema(tags=['Custom'])
 class SidebarView(views.APIView):
-    permission_classes = []  # Authentification obligatoire
+    permission_classes = [permissions.IsAuthenticated]  # Authentification obligatoire
 
     def get(self, request, *args, **kwargs):
         user = request.user
@@ -976,7 +976,11 @@ class SidebarView(views.APIView):
         exercises = Exercise.objects.filter(con__in=contracts)
 
         # Récupérer les fichiers associés aux exercices
-        files = File.objects.filter(exer__in=exercises & (models.Q(is_public=True) | models.Q(access__user=user) |models.Q(access__org=organization)))
+        files = File.objects.filter(exer__in=exercises).filter(
+            models.Q(is_public=True) |  # Fichiers publics
+            models.Q(access__user=user) |  # Fichiers accessibles directement à l'utilisateur
+            models.Q(access__org=organization)  # Fichiers accessibles à l'organisation
+        ).distinct()
 
         # Préparer les données à renvoyer
         data = {
