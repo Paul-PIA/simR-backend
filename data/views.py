@@ -1008,3 +1008,25 @@ class SidebarView(views.APIView):
         }
 
         return Response(data)
+    
+@extend_schema(tags=['Custom'])
+class HomeView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def get(self, request, *args, **kwargs):
+        user = request.user
+
+        # Vérification que l'utilisateur est associé à une organisation
+        if not user.org:
+            return Response({"error":"user has no registered organization"})
+
+        # Récupérer l'organisation de l'utilisateur
+        organization = user.org
+
+        # Récupérer les contrats associés à l'organisation
+        contracts = Contract.objects.filter(org=organization)
+        if len(contracts)!=1:
+            return Response({"space":"General","contracts":contracts.values(),"exercises":[]})
+        exercises = Exercise.objects.filter(con__in=contracts)
+        if len(exercises)!=1:
+            return Response({"space":"Contract","contracts":contracts.values(),"exercises":exercises.values()})
+        return Response({"space":"Exercise","contracts":[],"exercises":exercises.values("id")})
