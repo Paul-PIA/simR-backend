@@ -955,7 +955,7 @@ class FuseCommentsView(views.APIView):
             return Response({"success": True, "new_comment_id": new_comment.id})
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
     
-    
+@extend_schema(tags=['Custom'])
 class SidebarView(views.APIView):
     permission_classes = []  # Authentification obligatoire
 
@@ -976,7 +976,7 @@ class SidebarView(views.APIView):
         exercises = Exercise.objects.filter(con__in=contracts)
 
         # Récupérer les fichiers associés aux exercices
-        files = File.objects.filter(exer__in=exercises)
+        files = File.objects.filter(exer__in=exercises & (models.Q(is_public=True) | models.Q(access__user=user) |models.Q(access__org=organization)))
 
         # Préparer les données à renvoyer
         data = {
@@ -997,7 +997,7 @@ class SidebarView(views.APIView):
             "files": [
                 {
                     "id": file.id,
-                    "name": file.name
+                    "name": file.name,
                 }
                 for file in files
             ],
