@@ -954,3 +954,53 @@ class FuseCommentsView(views.APIView):
 
             return Response({"success": True, "new_comment_id": new_comment.id})
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+    
+    
+class SidebarView(views.APIView):
+    permission_classes = []  # Authentification obligatoire
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+
+        # Vérification que l'utilisateur est associé à une organisation
+        if not user.org:
+            return Response({"error":"user has no registered organization"})
+
+        # Récupérer l'organisation de l'utilisateur
+        organization = user.org
+
+        # Récupérer les contrats associés à l'organisation
+        contracts = Contract.objects.filter(org=organization)
+
+        # Récupérer les exercices associés aux contrats
+        exercises = Exercise.objects.filter(con__in=contracts)
+
+        # Récupérer les fichiers associés aux exercices
+        files = File.objects.filter(exer__in=exercises)
+
+        # Préparer les données à renvoyer
+        data = {
+            "contracts": [
+                {
+                    "id": contract.id,
+                    "name": contract.name
+                }
+                for contract in contracts
+            ],
+            "exercises": [
+                {
+                    "id": exercise.id,
+                    "name": exercise.name
+                }
+                for exercise in exercises
+            ],
+            "files": [
+                {
+                    "id": file.id,
+                    "name": file.name
+                }
+                for file in files
+            ],
+        }
+
+        return Response(data)
