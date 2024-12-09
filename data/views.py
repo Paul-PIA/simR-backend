@@ -1005,6 +1005,7 @@ class SidebarView(views.APIView):
                 }
                 for file in files
             ],
+            "isadmin":user.is_staff
         }
 
         return Response(data)
