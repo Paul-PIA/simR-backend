@@ -286,5 +286,5 @@ CELERY_RESULT_SERELIZER = 'json'
 # CELERY_TIMEZONE = 'CET'
 # CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
 
-FRONT_END_URL = 'https://simr-frontend-service.onrender.com'
+FRONT_END_URL = 'https://simr-frontend-9t2m.onrender.com/'
 ACCOUNT_EMAIL_CONFIRMATION_URL = FRONT_END_URL + 'activate/{key}/'
