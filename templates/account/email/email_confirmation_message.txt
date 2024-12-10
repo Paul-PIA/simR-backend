@@ -1,5 +1,5 @@
 Welcome {{user.username}},
 Thank you for signing up. Please activate your account by clicking the link below:
-https://localhost:3000/activate/{{key}}/
+{{ activate_url }}
 If you didn't sign up for this account, please ignore this email.
 SimR Team of PIA
