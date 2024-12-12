@@ -15,6 +15,11 @@ from .models import OrgConRight,OrgExerRight,UserExerRight
 from .permissions import get_chief
 from .tasks import send_celery,send_notification
 
+import openpyxl
+from openpyxl.drawing.image import Image
+from django.core.files.base import ContentFile
+import io
+
 class ShareSerializer(serializers.ModelSerializer):
     from_user = serializers.HiddenField(default=serializers.CurrentUserDefault())
     class Meta:
@@ -325,6 +330,54 @@ class ExerSerializer(serializers.ModelSerializer):
                 else:
                     UserExerRight.objects.create(user=_user,exer=exercise,)
         return exercise
+    
+    
+def clean_excel(file_field):
+    """
+    Nettoie un fichier Excel en supprimant les cellules fusionnées
+    et les illustrations non textuelles.
+    Args:
+        file_field: Un objet `FileField` ou similaire représentant le fichier Excel à nettoyer.
+    Returns:
+        Un fichier nettoyé en mémoire prêt à être sauvegardé.
+    """
+    # Charger le fichier Excel depuis le FileField
+    wb = openpyxl.load_workbook(file_field, data_only=True)  # Charger avec valeurs calculées (si formules)
+    for sheet in wb.worksheets:
+        # Gérer les cellules fusionnées
+        for merged_range in list(sheet.merged_cells):
+            # Obtenir la valeur de la première cellule fusionnée
+            min_row, min_col, max_row, max_col = (
+                merged_range.min_row,
+                merged_range.min_col,
+                merged_range.max_row,
+                merged_range.max_col,
+            )
+            # Obtenir la valeur de la première cellule
+            top_left_cell = sheet.cell(row=min_row, column=min_col)
+            value = top_left_cell.value
+            
+            # Défusiionner la plage
+            sheet.unmerge_cells(start_row=min_row, start_column=min_col, end_row=max_row, end_column=max_col)
+
+            # Remplir toutes les cellules fusionnées avec la même valeur
+            for row in range(min_row, max_row + 1):
+                for col in range(min_col, max_col + 1):
+                    cell = sheet.cell(row=row, column=col)  # Obtenir la cellule normale
+                    cell.value = value
+
+
+        # Supprimer les images et illustrations
+        if hasattr(sheet, "_images"):  # Vérifier si des images existent
+            sheet._images.clear()
+
+    # Sauvegarder le fichier nettoyé en mémoire
+    cleaned_file = io.BytesIO()
+    wb.save(cleaned_file)
+    cleaned_file.seek(0)  # Revenir au début du fichier
+
+    # Retourner le fichier nettoyé sous un format exploitable par Django
+    return ContentFile(cleaned_file.read(), name=file_field.name)
 
 class FileSerializer(serializers.ModelSerializer):
     uploader = serializers.HiddenField(default=serializers.CurrentUserDefault())
@@ -369,8 +422,11 @@ class FileSerializer(serializers.ModelSerializer):
         file = super().create(validated_data)
         # create and distribute access
         access = FileAccess.objects.create(file=file)
-        access.user.add(user)
+        access.user.add(user) #Par défaut, seul l'uploader a accès au fichier
         #access.org.add(user.org)
+        cleaned_file = clean_excel(file.content) 
+        file.content.save(cleaned_file.name,cleaned_file)
+        file.save()
         return file
 class CommentSerializer(serializers.ModelSerializer):
     commenter = serializers.HiddenField(default=serializers.CurrentUserDefault())
