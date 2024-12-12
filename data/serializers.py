@@ -256,12 +256,19 @@ class ConSerializer(serializers.ModelSerializer):
             if len(attrs['org']) != 1:
                 raise serializers.ValidationError("Only the principal organization is supposed to be decided.")
         return super().validate(attrs)
-    def create(self, validated_data):
+    def create(self, validated_data): #Par défault, l'utilisateur qui crée le contract est le chef de l'organisation
         contract = super().create(validated_data)
+        user=self.context['request'].user
         org = contract.org.first()
-        right = OrgConRight.objects.create( # create the right
-            org=org,con=contract,is_principal=True,nb_access=1,
-        )
+        if user.org==org:
+            right = OrgConRight.objects.create( # create the right
+                org=org,con=contract,is_principal=True,nb_access=1,chief=user
+            )
+            right.staff.add(user)
+        else:
+            right = OrgConRight.objects.create( # create the right
+                org=org,con=contract,is_principal=True,nb_access=1
+            )
         return contract
     def update(self, instance, validated_data):
         orgs_old = list(instance.org.all())
