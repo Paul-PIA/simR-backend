@@ -975,7 +975,7 @@ class SidebarView(views.APIView):
         # Récupérer les exercices associés aux contrats
         exercises = Exercise.objects.filter(con__in=contracts)
 
-        # Récupérer les fichiers associés aux exercices
+        # Récupérer les fichiers associés aux exercices que l'utilisateur peut lire
         files = File.objects.filter(exer__in=exercises).filter(
             models.Q(is_public=True) |  # Fichiers publics
             models.Q(access__user=user) |  # Fichiers accessibles directement à l'utilisateur
