@@ -264,11 +264,13 @@ class ConSerializer(serializers.ModelSerializer):
             right = OrgConRight.objects.create( # create the right
                 org=org,con=contract,is_principal=True,nb_access=1,chief=user
             )
-            right.staff.add(user)
         else:
-            right = OrgConRight.objects.create( # create the right
+            right = OrgConRight.objects.create( 
                 org=org,con=contract,is_principal=True,nb_access=1
             )
+        # Ajouter tous les utilisateurs associés à l'organisation dans le champ staff
+        users_in_org = CustomUser.objects.filter(org=org)  # Récupérer tous les utilisateurs de l'organisation
+        right.staff.add(*users_in_org)  # Ajouter tous les utilisateurs récupérés au champ ManyToMany
         return contract
     def update(self, instance, validated_data):
         orgs_old = list(instance.org.all())
